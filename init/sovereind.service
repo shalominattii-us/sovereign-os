@@ -1,0 +1,15 @@
+[Unit]
+Description=SOVEREIGN OS Agent Mesh Daemon
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/sovereign
+ExecStart=/usr/bin/python3 -m sovereign_agent_mesh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
