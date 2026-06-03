@@ -4,6 +4,7 @@ from ..tokens.operational import (
     ThreatResponseToken, SwarmMergeToken, EscrowWalletToken, IncursionAccessToken
 )
 from .telemetry import ArenaTelemetry, HeartbeatLoop
+from .defense import ThreatGraph, SwarmDefense
 
 class ArenaCore:
     def __init__(self, arena_id: str):
@@ -13,6 +14,8 @@ class ArenaCore:
         self.is_active = False
         self.telemetry = ArenaTelemetry(arena_id)
         self.loops: List[HeartbeatLoop] = []
+        self.threat_graph = ThreatGraph()
+        self.swarm = SwarmDefense(self.telemetry)
 
     def initialize_tokens(self, config: Dict[str, Any]):
         """Instantiate the 7 operational token environments"""
@@ -66,6 +69,37 @@ class ArenaCore:
         self.is_active = True
         self.telemetry.log_event("CORE", "Arena Activated. Operational loops running.")
         self.telemetry.update_metric("active_loops", [l.name for l in self.loops])
+
+    def simulate_threat_defense(self, threat_id: str):
+        """Execute GEN-03: Threat Simulation & Swarm Defense"""
+        if not self.is_active:
+            raise Exception("System must be active before simulation")
+        
+        threat = self.threat_graph.get_threat_by_id(threat_id)
+        if not threat:
+            self.telemetry.log_event("CORE", f"Threat {threat_id} not found in graph.", level="ALERT")
+            return
+        
+        self.telemetry.log_event("CORE", f"SIMULATING ATTACK: {threat['name']} ({threat['vector']})", level="ALERT")
+        
+        # TRT Engagement
+        trt = self.tokens.get('TRT')
+        if trt:
+            trt.state['active_defenses'].append(threat_id)
+            trt.state['anomaly_threshold'] = 0.99
+            
+        # SMT Swarm Deployment
+        self.swarm.deploy_swarm(threat_id, ["NODE-ALPHA", "NODE-BETA", "NODE-GAMMA"])
+        
+        # Simulate neutralization time
+        import time
+        time.sleep(1)
+        
+        self.swarm.neutralize_threat(threat_id)
+        
+        if trt:
+            trt.state['active_defenses'].remove(threat_id)
+            trt.state['anomaly_threshold'] = 0.85
 
     def _ntx_tick(self):
         ntx = self.tokens.get('NTX')

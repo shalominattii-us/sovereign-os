@@ -1,5 +1,6 @@
 import sys
 import json
+import time
 from gen01_arena_core.binding.controller import ArenaCore
 
 def execute_ignition():
@@ -36,16 +37,21 @@ def execute_ignition():
     arena.activate()
     
     # Allow some time for loops to run
-    import time
     print("[+] Monitoring heartbeats (2 seconds)...")
     time.sleep(2)
 
-    # Step 4: Generate Activation Report
+    # Step 4: GEN-03 Threat Simulation & Swarm Defense
+    print("\n[+] Executing GEN-03: THREAT SIMULATION & SWARM DEFENSE...")
+    arena.simulate_threat_defense("T01")  # Simulate Zero-Day Exploit
+    arena.simulate_threat_defense("T02")  # Simulate DDoS
+    
+    # Step 5: Generate Final Report
     matrix = arena.get_ignition_matrix()
     telemetry = arena.telemetry.get_snapshot()
+    forensics = arena.swarm.get_forensic_trace()
     
     print("\n" + "="*40)
-    print("       ARENA ACTIVATION REPORT (GEN-02)")
+    print("       ARENA DEFENSE REPORT (GEN-03)")
     print("="*40)
     print(f"Arena ID:    {matrix['arena_id']}")
     print(f"Core Status: {matrix['status']}")
@@ -53,6 +59,11 @@ def execute_ignition():
     print("-" * 40)
     print(f"Heartbeats:  {telemetry['heartbeats']}")
     print(f"Active Loops: {', '.join(telemetry['active_loops'])}")
+    
+    print("-" * 40)
+    print("SWARM DEFENSE FORENSICS:")
+    for entry in forensics:
+        print(f"  [{entry['timestamp']}] {entry['threat_id']}: {entry['action']} ({entry['status']})")
     
     print("-" * 40)
     print("TOKEN STATE UPDATES:")
