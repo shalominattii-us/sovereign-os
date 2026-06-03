@@ -31,18 +31,35 @@ def execute_ignition():
     binding_matrix = arena.ignite()
     print("[+] Tokens bound to SOV.AE substrate.")
 
-    # Step 3: Generate Ignition Matrix
+    # Step 3: GEN-02 Activation
+    print("\n[+] Executing GEN-02: ARENA ACTIVATION...")
+    arena.activate()
+    
+    # Allow some time for loops to run
+    import time
+    print("[+] Monitoring heartbeats (2 seconds)...")
+    time.sleep(2)
+
+    # Step 4: Generate Activation Report
     matrix = arena.get_ignition_matrix()
+    telemetry = arena.telemetry.get_snapshot()
     
     print("\n" + "="*40)
-    print("       ARENA IGNITION MATRIX")
+    print("       ARENA ACTIVATION REPORT (GEN-02)")
     print("="*40)
-    print(f"Arena ID: {matrix['arena_id']}")
-    print(f"Status:   {matrix['status']}")
+    print(f"Arena ID:    {matrix['arena_id']}")
+    print(f"Core Status: {matrix['status']}")
+    print(f"Operational: {'YES' if arena.is_active else 'NO'}")
     print("-" * 40)
-    print("TOKEN BINDINGS:")
-    for token_id, status in binding_matrix.items():
-        print(f"  - {token_id}: {status}")
+    print(f"Heartbeats:  {telemetry['heartbeats']}")
+    print(f"Active Loops: {', '.join(telemetry['active_loops'])}")
+    
+    print("-" * 40)
+    print("TOKEN STATE UPDATES:")
+    ntx = matrix['token_bindings']['NTX']
+    cct = matrix['token_bindings']['CCT']
+    print(f"  - NTX Transactions: {ntx['state']['transaction_count']}")
+    print(f"  - CCT Cycles Consumed: {cct['state']['consumed_cycles']}")
     
     print("-" * 40)
     print("ACTIVE COMPUTE CHANNELS:")

@@ -3,12 +3,16 @@ from ..tokens.operational import (
     ArenaEntryToken, ComputeCycleToken, NanotransactionToken,
     ThreatResponseToken, SwarmMergeToken, EscrowWalletToken, IncursionAccessToken
 )
+from .telemetry import ArenaTelemetry, HeartbeatLoop
 
 class ArenaCore:
     def __init__(self, arena_id: str):
         self.arena_id = arena_id
         self.tokens: Dict[str, Any] = {}
         self.is_ignited = False
+        self.is_active = False
+        self.telemetry = ArenaTelemetry(arena_id)
+        self.loops: List[HeartbeatLoop] = []
 
     def initialize_tokens(self, config: Dict[str, Any]):
         """Instantiate the 7 operational token environments"""
@@ -36,9 +40,44 @@ class ArenaCore:
         if not self.tokens:
             raise Exception("Tokens not initialized")
         
+        self.telemetry.log_event("CORE", "Executing Ignition Sequence...")
         binding_matrix = self.bind_all()
         self.is_ignited = True
+        self.telemetry.log_event("CORE", "Ignition Complete.")
         return binding_matrix
+
+    def activate(self):
+        """Execute GEN-02: Arena Activation"""
+        if not self.is_ignited:
+            raise Exception("System must be ignited before activation")
+        
+        self.telemetry.log_event("CORE", "Starting GEN-02 Activation...")
+        
+        # 1. NTX Heartbeat (100ms)
+        ntx_loop = HeartbeatLoop("NTX-HEARTBEAT", 0.1, self._ntx_tick)
+        ntx_loop.start()
+        self.loops.append(ntx_loop)
+        
+        # 2. CCT Compute Loop (500ms)
+        cct_loop = HeartbeatLoop("CCT-COMPUTE", 0.5, self._cct_tick)
+        cct_loop.start()
+        self.loops.append(cct_loop)
+        
+        self.is_active = True
+        self.telemetry.log_event("CORE", "Arena Activated. Operational loops running.")
+        self.telemetry.update_metric("active_loops", [l.name for l in self.loops])
+
+    def _ntx_tick(self):
+        ntx = self.tokens.get('NTX')
+        if ntx:
+            ntx.state['transaction_count'] += 1
+            self.telemetry.update_metric("heartbeats", self.telemetry.get_snapshot()["heartbeats"] + 1)
+
+    def _cct_tick(self):
+        cct = self.tokens.get('CCT')
+        if cct:
+            cct.state['consumed_cycles'] += 100
+            cct.state['available_cycles'] -= 100
 
     def get_ignition_matrix(self):
         return {
