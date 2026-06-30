@@ -1,6 +1,6 @@
 {
   "name": "worldmonitor",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "WorldMonitor — global event and state engine for AEGENTIS / Sovereign OS",
   "type": "module",
   "main": "index.js",

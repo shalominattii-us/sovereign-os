@@ -16,7 +16,10 @@ function ensureStore() {
 
 /**
  * Append a single event as a JSON line to the event store.
- * This is the only write operation — the log is append-only.
+ *
+ * This is the ONLY write operation on the log.
+ * The log is append-only and immutable — events are never edited or deleted.
+ * If something changes in the world, a new corrective event is appended.
  *
  * @param {Object} event - Enriched event object
  */
@@ -26,27 +29,47 @@ export function appendEvent(event) {
 }
 
 /**
- * Read all persisted events from disk and return them as an array.
- * Used at startup for state replay.
+ * Read all persisted events from disk.
  *
- * @returns {Object[]} - Array of event objects in chronological order
+ * Returns a structured result so callers (replay.js) can report on
+ * data integrity. Malformed lines are counted and skipped rather than
+ * throwing, so a single corrupt line cannot prevent system startup.
+ *
+ * @returns {{ events: Object[], skipped: number }}
  */
 export function loadEvents() {
   ensureStore();
   const raw = fs.readFileSync(STORE_PATH, "utf8").trim();
-  if (!raw) return [];
+  if (!raw) return { events: [], skipped: 0 };
 
-  return raw
+  let skipped = 0;
+  const events = raw
     .split("\n")
     .filter(Boolean)
     .map((line) => {
       try {
         return JSON.parse(line);
       } catch {
-        return null;  // skip malformed lines
+        skipped++;
+        return null;
       }
     })
     .filter(Boolean);
+
+  return { events, skipped };
+}
+
+/**
+ * Return the number of lines (events) currently in the store.
+ * Reads the file synchronously — intended for health checks and tests only.
+ *
+ * @returns {number}
+ */
+export function getEventCount() {
+  ensureStore();
+  const raw = fs.readFileSync(STORE_PATH, "utf8").trim();
+  if (!raw) return 0;
+  return raw.split("\n").filter(Boolean).length;
 }
 
 /**
