@@ -1,0 +1,162 @@
+# AEGENTIX CYBERNETICS — Master Infrastructure Orchestration
+# ===========================================================
+# Boots the complete sovereign stack:
+#
+#   worldmonitor      — Event-sourced kernel (port 8080)
+#   aegentis-vr       — VR WebSocket spatial backend (port 7777)
+#   jarvis            — Agentic AI orchestrator (binds to worldmonitor)
+#   ruview-adapter    — Physical reality telemetry bridge
+#   orbital-observer  — Unified observability dashboard (port 9000)
+#
+# Usage:
+#   docker compose up --build
+#   docker compose up worldmonitor aegentis-vr   # partial stack
+#   docker compose logs -f worldmonitor
+#
+# Environment:
+#   Copy .env.example to .env and fill in secrets before running.
+
+version: "3.9"
+
+networks:
+  aegentix:
+    driver: bridge
+
+volumes:
+  worldmonitor-data:
+    driver: local
+
+services:
+
+  # ── WorldMonitor Kernel ─────────────────────────────────────────────────────
+  worldmonitor:
+    build:
+      context: ./worldmonitor
+      dockerfile: Dockerfile
+    container_name: worldmonitor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - worldmonitor-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+    networks:
+      - aegentix
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    labels:
+      aegentix.role: "kernel"
+      aegentix.layer: "event-store"
+
+  # ── AEGENTIS VR Backend (AEGENTIS-X Spatial Layer) ─────────────────────────
+  aegentis-vr:
+    build:
+      context: ./aegentis-vr-backend
+      dockerfile: Dockerfile
+    container_name: aegentis-vr
+    restart: unless-stopped
+    ports:
+      - "7777:7777"
+    environment:
+      - VR_PORT=7777
+      - SOVEREIGN_JWT_SECRET=${SOVEREIGN_JWT_SECRET:-change-me-in-production}
+      - WORLDMONITOR_URL=http://worldmonitor:8080
+    networks:
+      - aegentix
+    depends_on:
+      worldmonitor:
+        condition: service_healthy
+    labels:
+      aegentix.role: "vr-backend"
+      aegentix.layer: "xr"
+
+  # ── VR → WorldMonitor Adapter ───────────────────────────────────────────────
+  vr-adapter:
+    build:
+      context: ./worldmonitor
+      dockerfile: Dockerfile
+    container_name: vr-adapter
+    restart: unless-stopped
+    command: ["node", "src/adapters/vr.js"]
+    environment:
+      - WORLDMONITOR_URL=http://worldmonitor:8080
+      - VR_BACKEND_URL=http://aegentis-vr:7777
+      - VR_WS_TOKEN=${VR_WS_TOKEN:-}
+    networks:
+      - aegentix
+    depends_on:
+      worldmonitor:
+        condition: service_healthy
+    labels:
+      aegentix.role: "adapter"
+      aegentix.layer: "xr"
+
+  # ── Jarvis Agentic Orchestrator ─────────────────────────────────────────────
+  jarvis:
+    build:
+      context: ./jarvis
+      dockerfile: Dockerfile
+    container_name: jarvis
+    restart: unless-stopped
+    environment:
+      - WORLDMONITOR_URL=http://worldmonitor:8080
+      - JARVIS_ENTITY_ID=jarvis-prime
+      - JARVIS_LOOP_INTERVAL=5.0
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    networks:
+      - aegentix
+    depends_on:
+      worldmonitor:
+        condition: service_healthy
+    labels:
+      aegentix.role: "orchestrator"
+      aegentix.layer: "agents"
+
+  # ── RuView Physical Reality Telemetry Adapter ───────────────────────────────
+  ruview-adapter:
+    build:
+      context: ./worldmonitor
+      dockerfile: Dockerfile
+    container_name: ruview-adapter
+    restart: unless-stopped
+    command: ["node", "src/adapters/ruview.js"]
+    environment:
+      - WORLDMONITOR_URL=http://worldmonitor:8080
+      - RUVIEW_URL=${RUVIEW_URL:-http://ruview:9090}
+      - RUVIEW_POLL_MS=2000
+    networks:
+      - aegentix
+    depends_on:
+      worldmonitor:
+        condition: service_healthy
+    labels:
+      aegentix.role: "adapter"
+      aegentix.layer: "reality"
+
+  # ── Orbital Observer (Unified Observability Dashboard) ──────────────────────
+  orbital-observer:
+    build:
+      context: ./orbital-observer
+      dockerfile: Dockerfile
+    container_name: orbital-observer
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      - WORLDMONITOR_URL=http://worldmonitor:8080
+      - VR_BACKEND_URL=http://aegentis-vr:7777
+      - OBSERVER_PORT=9000
+    networks:
+      - aegentix
+    depends_on:
+      worldmonitor:
+        condition: service_healthy
+    labels:
+      aegentix.role: "observatory"
+      aegentix.layer: "observability"
