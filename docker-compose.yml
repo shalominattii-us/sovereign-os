@@ -1,49 +1,49 @@
-# AEGENTIX CYBERNETICS — Master Infrastructure Orchestration
-# ===========================================================
-# Boots the complete sovereign stack:
+##############################################################
+#  AEGENTIX CYBERNETICS — Master Orchestration
+#  10 Divisions. One Kernel. One Event Bus.
 #
-#   worldmonitor      — Event-sourced kernel (port 8080)
-#   aegentis-vr       — VR WebSocket spatial backend (port 7777)
-#   jarvis            — Agentic AI orchestrator (binds to worldmonitor)
-#   ruview-adapter    — Physical reality telemetry bridge
-#   orbital-observer  — Unified observability dashboard (port 9000)
+#  Usage:
+#    docker compose up -d --build
+#    docker compose logs -f kernel-event-bus
+#    docker compose ps
 #
-# Usage:
-#   docker compose up --build
-#   docker compose up worldmonitor aegentis-vr   # partial stack
-#   docker compose logs -f worldmonitor
-#
-# Environment:
-#   Copy .env.example to .env and fill in secrets before running.
+#  Environment:
+#    Copy .env.example to .env and fill in secrets before running.
+##############################################################
 
 version: "3.9"
 
 networks:
-  aegentix:
+  aegentis-net:
     driver: bridge
 
 volumes:
+  kernel-data:
+  treasury-data:
+  vector-data:
   worldmonitor-data:
-    driver: local
 
 services:
 
-  # ── WorldMonitor Kernel ─────────────────────────────────────────────────────
-  worldmonitor:
+  # ══════════════════════════════════════════════════════════
+  # AEGENTIS KERNEL — Event Bus (WorldMonitor)
+  # The authoritative event store and world state engine.
+  # ══════════════════════════════════════════════════════════
+  kernel-event-bus:
     build:
-      context: ./worldmonitor
+      context: ./KERNEL/event-bus
       dockerfile: Dockerfile
-    container_name: worldmonitor
-    restart: unless-stopped
+    container_name: aegentis-kernel
     ports:
       - "8080:8080"
     volumes:
-      - worldmonitor-data:/app/data
+      - kernel-data:/app/data
     environment:
       - NODE_ENV=production
       - PORT=8080
     networks:
-      - aegentix
+      - aegentis-net
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 10s
@@ -51,112 +51,247 @@ services:
       retries: 5
       start_period: 5s
     labels:
-      aegentix.role: "kernel"
-      aegentix.layer: "event-store"
+      aegentis.division: "KERNEL"
+      aegentis.role: "event-bus"
 
-  # ── AEGENTIS VR Backend (AEGENTIS-X Spatial Layer) ─────────────────────────
+  # KERNEL: Identity OS
+  kernel-identity:
+    build:
+      context: ./KERNEL/identity-os
+      dockerfile: Dockerfile
+    container_name: aegentis-identity
+    ports:
+      - "8090:8090"
+    environment:
+      - KERNEL_EVENT_BUS_URL=http://kernel-event-bus:8080/intent
+      - PORT=8090
+      - SOVEREIGN_JWT_SECRET=${SOVEREIGN_JWT_SECRET:-aegentix-genesis-key}
+    networks:
+      - aegentis-net
+    depends_on:
+      kernel-event-bus:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      aegentis.division: "KERNEL"
+      aegentis.role: "identity-os"
+
+  # KERNEL: Agent Runtime (Jarvis)
+  kernel-agent-runtime:
+    build:
+      context: ./KERNEL/agent-runtime
+      dockerfile: Dockerfile
+    container_name: aegentis-jarvis
+    environment:
+      - KERNEL_EVENT_BUS_URL=http://kernel-event-bus:8080/intent
+      - JARVIS_LOOP_INTERVAL=10
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    networks:
+      - aegentis-net
+    depends_on:
+      kernel-event-bus:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      aegentis.division: "KERNEL"
+      aegentis.role: "agent-runtime"
+
+  # ══════════════════════════════════════════════════════════
+  # AEGENTIS TREASURY
+  # ══════════════════════════════════════════════════════════
+  treasury:
+    build:
+      context: ./TREASURY
+      dockerfile: Dockerfile
+    container_name: aegentis-treasury
+    ports:
+      - "8081:8081"
+    volumes:
+      - treasury-data:/app/data
+    environment:
+      - KERNEL_EVENT_BUS_URL=http://kernel-event-bus:8080/intent
+      - PORT=8081
+    networks:
+      - aegentis-net
+    depends_on:
+      kernel-event-bus:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      aegentis.division: "TREASURY"
+
+  treasury-agent:
+    build:
+      context: ./TREASURY/autonomous-agents
+      dockerfile: Dockerfile
+    container_name: aegentis-treasury-agent
+    environment:
+      - KERNEL_EVENT_BUS_URL=http://kernel-event-bus:8080/intent
+      - TREASURY_LOOP_INTERVAL=15
+    networks:
+      - aegentis-net
+    depends_on:
+      kernel-event-bus:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      aegentis.division: "TREASURY"
+      aegentis.role: "autonomous-agent"
+
+  # ══════════════════════════════════════════════════════════
+  # AEGENTIS AI
+  # ══════════════════════════════════════════════════════════
+  ai-runtime:
+    build:
+      context: ./AI/multi-llm-runtime
+      dockerfile: Dockerfile
+    container_name: aegentis-ai
+    ports:
+      - "8082:8082"
+    environment:
+      - KERNEL_EVENT_BUS_URL=http://kernel-event-bus:8080/intent
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_API_BASE=${OPENAI_API_BASE:-https://api.openai.com/v1}
+      - PORT=8082
+    networks:
+      - aegentis-net
+    depends_on:
+      kernel-event-bus:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      aegentis.division: "AI"
+
+  # ══════════════════════════════════════════════════════════
+  # AEGENTIS XR — AEGENTIS-X Quest Backend
+  # ══════════════════════════════════════════════════════════
+  xr-quest-backend:
+    build:
+      context: ./XR/quest
+      dockerfile: Dockerfile
+    container_name: aegentis-x
+    ports:
+      - "7778:7778"
+    environment:
+      - KERNEL_EVENT_BUS_URL=http://kernel-event-bus:8080/intent
+      - QUEST_BACKEND_PORT=7778
+      - SOVEREIGN_JWT_SECRET=${SOVEREIGN_JWT_SECRET:-aegentix-genesis-key}
+    networks:
+      - aegentis-net
+    depends_on:
+      kernel-event-bus:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      aegentis.division: "XR"
+      aegentis.role: "aegentis-x"
+
+  # Legacy VR backend (aegentis-vr-backend repo)
   aegentis-vr:
     build:
       context: ./aegentis-vr-backend
       dockerfile: Dockerfile
     container_name: aegentis-vr
-    restart: unless-stopped
     ports:
       - "7777:7777"
     environment:
       - VR_PORT=7777
-      - SOVEREIGN_JWT_SECRET=${SOVEREIGN_JWT_SECRET:-change-me-in-production}
-      - WORLDMONITOR_URL=http://worldmonitor:8080
+      - SOVEREIGN_JWT_SECRET=${SOVEREIGN_JWT_SECRET:-aegentix-genesis-key}
+      - WORLDMONITOR_URL=http://kernel-event-bus:8080
     networks:
-      - aegentix
+      - aegentis-net
     depends_on:
-      worldmonitor:
+      kernel-event-bus:
         condition: service_healthy
-    labels:
-      aegentix.role: "vr-backend"
-      aegentix.layer: "xr"
-
-  # ── VR → WorldMonitor Adapter ───────────────────────────────────────────────
-  vr-adapter:
-    build:
-      context: ./worldmonitor
-      dockerfile: Dockerfile
-    container_name: vr-adapter
     restart: unless-stopped
-    command: ["node", "src/adapters/vr.js"]
-    environment:
-      - WORLDMONITOR_URL=http://worldmonitor:8080
-      - VR_BACKEND_URL=http://aegentis-vr:7777
-      - VR_WS_TOKEN=${VR_WS_TOKEN:-}
-    networks:
-      - aegentix
-    depends_on:
-      worldmonitor:
-        condition: service_healthy
     labels:
-      aegentix.role: "adapter"
-      aegentix.layer: "xr"
+      aegentis.division: "XR"
+      aegentis.role: "vr-backend"
 
-  # ── Jarvis Agentic Orchestrator ─────────────────────────────────────────────
-  jarvis:
+  # ══════════════════════════════════════════════════════════
+  # AEGENTIS SECURITY
+  # ══════════════════════════════════════════════════════════
+  security-threat-monitor:
     build:
-      context: ./jarvis
+      context: ./SECURITY/threat-intelligence
       dockerfile: Dockerfile
-    container_name: jarvis
-    restart: unless-stopped
+    container_name: aegentis-security
     environment:
-      - WORLDMONITOR_URL=http://worldmonitor:8080
-      - JARVIS_ENTITY_ID=jarvis-prime
-      - JARVIS_LOOP_INTERVAL=5.0
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - KERNEL_EVENT_BUS_URL=http://kernel-event-bus:8080/intent
+      - THREAT_LOOP_INTERVAL=5
     networks:
-      - aegentix
+      - aegentis-net
     depends_on:
-      worldmonitor:
+      kernel-event-bus:
         condition: service_healthy
-    labels:
-      aegentix.role: "orchestrator"
-      aegentix.layer: "agents"
-
-  # ── RuView Physical Reality Telemetry Adapter ───────────────────────────────
-  ruview-adapter:
-    build:
-      context: ./worldmonitor
-      dockerfile: Dockerfile
-    container_name: ruview-adapter
     restart: unless-stopped
-    command: ["node", "src/adapters/ruview.js"]
-    environment:
-      - WORLDMONITOR_URL=http://worldmonitor:8080
-      - RUVIEW_URL=${RUVIEW_URL:-http://ruview:9090}
-      - RUVIEW_POLL_MS=2000
-    networks:
-      - aegentix
-    depends_on:
-      worldmonitor:
-        condition: service_healthy
     labels:
-      aegentix.role: "adapter"
-      aegentix.layer: "reality"
+      aegentis.division: "SECURITY"
 
-  # ── Orbital Observer (Unified Observability Dashboard) ──────────────────────
+  # SECURITY: Orbital Observer (Monitoring Dashboard)
   orbital-observer:
     build:
-      context: ./orbital-observer
+      context: ./SECURITY/monitoring
       dockerfile: Dockerfile
-    container_name: orbital-observer
-    restart: unless-stopped
+    container_name: aegentis-observer
     ports:
       - "9000:9000"
     environment:
-      - WORLDMONITOR_URL=http://worldmonitor:8080
-      - VR_BACKEND_URL=http://aegentis-vr:7777
-      - OBSERVER_PORT=9000
+      - KERNEL_EVENT_BUS_URL=http://kernel-event-bus:8080
+      - PORT=9000
     networks:
-      - aegentix
+      - aegentis-net
     depends_on:
-      worldmonitor:
+      kernel-event-bus:
         condition: service_healthy
+    restart: unless-stopped
     labels:
-      aegentix.role: "observatory"
-      aegentix.layer: "observability"
+      aegentis.division: "SECURITY"
+      aegentis.role: "orbital-observer"
+
+  # ══════════════════════════════════════════════════════════
+  # AEGENTIS DATA
+  # ══════════════════════════════════════════════════════════
+  data-vector-memory:
+    build:
+      context: ./DATA/vector-memory
+      dockerfile: Dockerfile
+    container_name: aegentis-data
+    ports:
+      - "8083:8083"
+    volumes:
+      - vector-data:/data/aegentis
+    environment:
+      - KERNEL_EVENT_BUS_URL=http://kernel-event-bus:8080/intent
+      - AEGENTIS_VECTOR_DB=/data/aegentis/vectors.jsonl
+      - PORT=8083
+    networks:
+      - aegentis-net
+    depends_on:
+      kernel-event-bus:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      aegentis.division: "DATA"
+
+  # ══════════════════════════════════════════════════════════
+  # AEGENTIS CLOUD — Event Streaming
+  # ══════════════════════════════════════════════════════════
+  cloud-event-stream:
+    build:
+      context: ./CLOUD/event-streaming
+      dockerfile: Dockerfile
+    container_name: aegentis-cloud
+    ports:
+      - "8084:8084"
+    environment:
+      - KERNEL_EVENT_BUS_URL=http://kernel-event-bus:8080/intent
+      - PORT=8084
+    networks:
+      - aegentis-net
+    depends_on:
+      kernel-event-bus:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      aegentis.division: "CLOUD"
