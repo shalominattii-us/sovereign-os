@@ -8,6 +8,8 @@ import { state } from "./worldState.js";
  * Because all mutations flow through here, state can always be
  * rebuilt by replaying the full event log from disk.
  *
+ * Treasury projection upgraded to full wallet v1/v2/v3 canonical event set.
+ *
  * @param {Object} event - Enriched, validated event
  */
 export function apply(event) {
@@ -32,6 +34,7 @@ export function apply(event) {
   }
 }
 
+// ── Robotics ──────────────────────────────────────────────────────────────────
 function applyRobotics(event) {
   const current = state.robots[event.entity_id] || {};
   state.robots[event.entity_id] = {
@@ -42,15 +45,150 @@ function applyRobotics(event) {
   };
 }
 
+// ── Treasury ──────────────────────────────────────────────────────────────────
+/**
+ * Treasury world state shape per wallet entity:
+ * {
+ *   walletId:   string,
+ *   ownerDid:   string | null,
+ *   type:       string,
+ *   version:    string,
+ *   assets:     { [symbol]: number },   // current balances
+ *   frozen:     boolean,
+ *   signers:    string[],
+ *   lastTx:     object,
+ *   updated:    number
+ * }
+ */
 function applyTreasury(event) {
-  const current = state.treasury[event.entity_id] || {};
-  state.treasury[event.entity_id] = {
-    ...current,
-    lastTx:  event.payload,
-    updated: event.timestamp,
+  const id      = event.entity_id;
+  const payload = event.payload;
+  const current = state.treasury[id] || {
+    walletId: id,
+    ownerDid: null,
+    type:     'unknown',
+    version:  '1.0.0',
+    assets:   {},
+    frozen:   false,
+    signers:  [],
+    lastTx:   null,
+    updated:  null
   };
+
+  switch (event.type) {
+
+    // ── Wallet lifecycle ────────────────────────────────────────────────────
+    case "WALLET_CREATED":
+      state.treasury[id] = {
+        ...current,
+        walletId: id,
+        ownerDid: payload.ownerDid || payload.ownerId || null,
+        type:     payload.type    || 'sovereign',
+        version:  payload.version || '1.0.0',
+        signers:  payload.ownerDid ? [payload.ownerDid] : [],
+        lastTx:   payload,
+        updated:  event.timestamp
+      };
+      break;
+
+    case "WALLET_FROZEN":
+      state.treasury[id] = { ...current, frozen: true, lastTx: payload, updated: event.timestamp };
+      break;
+
+    case "WALLET_UNFROZEN":
+      state.treasury[id] = { ...current, frozen: false, lastTx: payload, updated: event.timestamp };
+      break;
+
+    // ── Deposits ────────────────────────────────────────────────────────────
+    case "DEPOSIT_RECORDED": {
+      const assets = { ...current.assets };
+      assets[payload.asset] = (assets[payload.asset] || 0) + payload.amount;
+      state.treasury[id] = { ...current, assets, lastTx: payload, updated: event.timestamp };
+      break;
+    }
+
+    // ── Withdrawals ─────────────────────────────────────────────────────────
+    case "WITHDRAWAL_INITIATED":
+    case "WITHDRAWAL_APPROVED":
+    case "WITHDRAWAL_REJECTED":
+    case "WITHDRAWAL_EXPIRED":
+      state.treasury[id] = { ...current, lastTx: payload, updated: event.timestamp };
+      break;
+
+    case "WITHDRAWAL_RECORDED": {
+      const assets = { ...current.assets };
+      assets[payload.asset] = (assets[payload.asset] || 0) - payload.amount;
+      state.treasury[id] = { ...current, assets, lastTx: payload, updated: event.timestamp };
+      break;
+    }
+
+    // ── Transfers ────────────────────────────────────────────────────────────
+    case "TRANSFER_DEBIT": {
+      const assets = { ...current.assets };
+      assets[payload.asset] = (assets[payload.asset] || 0) - payload.amount;
+      state.treasury[id] = { ...current, assets, lastTx: payload, updated: event.timestamp };
+      break;
+    }
+
+    case "TRANSFER_CREDIT": {
+      const assets = { ...current.assets };
+      assets[payload.asset] = (assets[payload.asset] || 0) + payload.amount;
+      state.treasury[id] = { ...current, assets, lastTx: payload, updated: event.timestamp };
+      break;
+    }
+
+    case "TRANSFER_INTENT":
+      state.treasury[id] = { ...current, lastTx: payload, updated: event.timestamp };
+      break;
+
+    // ── Balances & snapshots ─────────────────────────────────────────────────
+    case "BALANCE_SNAPSHOT":
+    case "XVLSO_SYNC":
+      state.treasury[id] = { ...current, lastTx: payload, updated: event.timestamp };
+      break;
+
+    // ── Identity & signing ───────────────────────────────────────────────────
+    case "SIGNER_DELEGATED": {
+      const signers = current.signers.includes(payload.signerDid)
+        ? current.signers
+        : [...current.signers, payload.signerDid];
+      state.treasury[id] = { ...current, signers, lastTx: payload, updated: event.timestamp };
+      break;
+    }
+
+    case "SIGNER_REVOKED": {
+      const signers = current.signers.filter(s => s !== payload.signerDid);
+      state.treasury[id] = { ...current, signers, lastTx: payload, updated: event.timestamp };
+      break;
+    }
+
+    case "DID_REVOKED":
+    case "SIGNATURE_REJECTED":
+    case "POLICY_VIOLATION":
+      state.treasury[id] = { ...current, lastTx: payload, updated: event.timestamp };
+      break;
+
+    // ── Corrections ──────────────────────────────────────────────────────────
+    case "CORRECTION_ISSUED": {
+      const assets = { ...current.assets };
+      assets[payload.asset] = payload.corrected_balance;
+      state.treasury[id] = { ...current, assets, lastTx: payload, updated: event.timestamp };
+      break;
+    }
+
+    // ── Asset registration ───────────────────────────────────────────────────
+    case "ASSET_REGISTERED":
+      state.treasury[id] = { ...current, lastTx: payload, updated: event.timestamp };
+      break;
+
+    default:
+      // Unknown treasury event — record last payload without further mutation
+      state.treasury[id] = { ...current, lastTx: payload, updated: event.timestamp };
+      break;
+  }
 }
 
+// ── XR ────────────────────────────────────────────────────────────────────────
 function applyXR(event) {
   const current = state.xr[event.entity_id] || {};
   state.xr[event.entity_id] = {

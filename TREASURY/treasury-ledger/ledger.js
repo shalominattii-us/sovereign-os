@@ -4,7 +4,7 @@
  * All balances are derived from the event log — never stored directly.
  */
 
-const fs = require('fs');
+const fs   = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
@@ -21,12 +21,12 @@ class TreasuryLedger {
    */
   append(type, entityId, payload, actor = null) {
     const event = {
-      event_id: crypto.randomUUID(),
+      event_id:      crypto.randomUUID(),
       event_version: 1,
-      timestamp: Date.now(),
-      domain: 'treasury',
+      timestamp:     Date.now(),
+      domain:        'treasury',
       type,
-      entity_id: entityId,
+      entity_id:     entityId,
       actor,
       payload
     };
@@ -35,32 +35,46 @@ class TreasuryLedger {
   }
 
   /**
-   * Replay the ledger to compute current balances.
+   * Read all raw events from the ledger file.
+   */
+  readAll() {
+    if (!fs.existsSync(LEDGER_PATH)) return [];
+    return fs.readFileSync(LEDGER_PATH, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map(line => { try { return JSON.parse(line); } catch (_) { return null; } })
+      .filter(Boolean);
+  }
+
+  /**
+   * Return all ledger events for a specific entity (wallet).
+   */
+  getHistory(entityId) {
+    return this.readAll().filter(e => e.entity_id === entityId);
+  }
+
+  /**
+   * Replay the ledger to compute current balances for all entities.
    */
   computeBalances() {
-    if (!fs.existsSync(LEDGER_PATH)) return {};
     const balances = {};
-    const lines = fs.readFileSync(LEDGER_PATH, 'utf8').split('\n').filter(Boolean);
-    for (const line of lines) {
-      try {
-        const event = JSON.parse(line);
-        const { entity_id, type, payload } = event;
-        if (!balances[entity_id]) {
-          balances[entity_id] = { assets: {}, transactions: 0 };
-        }
-        if (type === 'ASSET_REGISTERED') {
-          balances[entity_id].assets[payload.asset] = payload.amount;
-        } else if (type === 'DEPOSIT_RECORDED') {
-          balances[entity_id].assets[payload.asset] =
-            (balances[entity_id].assets[payload.asset] || 0) + payload.amount;
-        } else if (type === 'WITHDRAWAL_RECORDED') {
-          balances[entity_id].assets[payload.asset] =
-            (balances[entity_id].assets[payload.asset] || 0) - payload.amount;
-        } else if (type === 'CORRECTION_ISSUED') {
-          balances[entity_id].assets[payload.asset] = payload.corrected_balance;
-        }
-        balances[entity_id].transactions++;
-      } catch (_) {}
+    for (const event of this.readAll()) {
+      const { entity_id, type, payload } = event;
+      if (!balances[entity_id]) {
+        balances[entity_id] = { assets: {}, transactions: 0 };
+      }
+      if (type === 'ASSET_REGISTERED') {
+        balances[entity_id].assets[payload.asset] = payload.amount;
+      } else if (type === 'DEPOSIT_RECORDED') {
+        balances[entity_id].assets[payload.asset] =
+          (balances[entity_id].assets[payload.asset] || 0) + payload.amount;
+      } else if (type === 'WITHDRAWAL_RECORDED') {
+        balances[entity_id].assets[payload.asset] =
+          (balances[entity_id].assets[payload.asset] || 0) - payload.amount;
+      } else if (type === 'CORRECTION_ISSUED') {
+        balances[entity_id].assets[payload.asset] = payload.corrected_balance;
+      }
+      balances[entity_id].transactions++;
     }
     return balances;
   }
