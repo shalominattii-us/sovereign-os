@@ -219,7 +219,10 @@ function applyCybercore(event) {
 
   switch (event.type) {
     case "OPPORTUNITY_DISCOVERED":
-    case "OPPORTUNITY_MERGED": {
+    case "OPPORTUNITY_MERGED":
+    case "OPPORTUNITY_SOURCE_VERIFIED":
+    case "OPPORTUNITY_INTELLIGENCE_SCORED":
+    case "OPPORTUNITY_COMMERCIAL_ROUTE_IDENTIFIED": {
       const record = event.payload.record;
       state.cybercore.opportunities[id] = {
         ...record,

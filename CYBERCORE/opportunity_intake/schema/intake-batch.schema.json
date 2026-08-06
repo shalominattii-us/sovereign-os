@@ -26,7 +26,7 @@
         "title": { "type": "string", "minLength": 1 },
         "issuer": { "type": ["string", "null"] },
         "jurisdiction": { "type": ["string", "null"] },
-        "opportunity_type": { "enum": ["funding", "procurement"] },
+        "opportunity_type": { "enum": ["funding", "procurement", "challenge_prize", "technology_need"] },
         "program_type": { "type": ["string", "null"] },
         "procurement_type": {
           "type": ["string", "null"],
@@ -55,7 +55,7 @@
         "revenue_path": { "type": ["string", "null"] },
         "revenue_probability": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
         "record_status": {
-          "enum": ["forecast", "active", "amended", "extended", "cancelled", "awarded", "unknown"]
+          "enum": ["forecast", "active", "amended", "extended", "cancelled", "awarded", "closed", "historical", "program", "unknown"]
         },
         "lifecycle_note": { "type": ["string", "null"] }
       }

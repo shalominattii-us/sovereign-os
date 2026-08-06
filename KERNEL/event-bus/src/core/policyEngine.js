@@ -25,13 +25,40 @@ export function validate(event) {
       return { ok: false, reason: "cybercore opportunities require human_required authorization mode" };
     }
 
-    if (["OPPORTUNITY_DISCOVERED", "OPPORTUNITY_MERGED"].includes(event.type)) {
+    const recordSnapshotEvents = [
+      "OPPORTUNITY_DISCOVERED",
+      "OPPORTUNITY_MERGED",
+      "OPPORTUNITY_SOURCE_VERIFIED",
+      "OPPORTUNITY_INTELLIGENCE_SCORED",
+      "OPPORTUNITY_COMMERCIAL_ROUTE_IDENTIFIED",
+    ];
+    if (recordSnapshotEvents.includes(event.type)) {
       const record = event.payload?.record;
       if (!record?.id || !record?.deduplication_key || !record?.action_state) {
-        return { ok: false, reason: "cybercore discovery and merge events require a normalized record" };
+        return { ok: false, reason: "cybercore record events require a normalized record snapshot" };
       }
       if (record.action_state === "AUTHORIZED_ACTION") {
         return { ok: false, reason: "authorized state may only be entered through an authorization event" };
+      }
+      if (event.type === "OPPORTUNITY_SOURCE_VERIFIED"
+          && (!Array.isArray(record.source_evidence)
+            || record.source_evidence.length === 0
+            || !record.validation?.status)) {
+        return { ok: false, reason: "source verification events require evidence and a validation decision" };
+      }
+      if (event.type === "OPPORTUNITY_INTELLIGENCE_SCORED"
+          && (record.validation?.status !== "VERIFIED" || record.intelligence?.status !== "SCORED")) {
+        return { ok: false, reason: "intelligence events require a verified, scored record" };
+      }
+      if (event.type === "OPPORTUNITY_COMMERCIAL_ROUTE_IDENTIFIED") {
+        if (!record.commercialization?.status || event.payload?.treasury_handoff_executed !== false) {
+          return { ok: false, reason: "commercial route events require a route and no automatic Treasury handoff" };
+        }
+        if (record.commercialization.status === "READY_FOR_HUMAN_REVIEW"
+            && (record.action_state !== "HUMAN_REVIEW_REQUIRED"
+              || record.commercialization.treasury_labs_handoff?.status !== "HUMAN_APPROVAL_REQUIRED")) {
+          return { ok: false, reason: "ready commercial routes must stop at explicit human review" };
+        }
       }
     }
 

@@ -14,6 +14,13 @@ import { InputValidationError } from "./errors.js";
 import { mergeOpportunity, normalizeOpportunity } from "./normalizer.js";
 import { validateBatchInput, validateNormalizedRecord } from "./schema.js";
 import {
+  applySourceEvidence,
+  normalizeEvidenceItem,
+  validateEvidenceBatch,
+} from "./verification.js";
+import { scoreOpportunity } from "./intelligence.js";
+import { routeOpportunity } from "./commercialization.js";
+import {
   acquireExclusiveLock,
   ensureDirectoryLayout,
   listJsonFiles,
@@ -122,7 +129,8 @@ async function persistRecordToStages(baseDir, record) {
     await removeRecordFile(baseDir, "commercial_pipeline", record.id);
   }
 
-  if (["cancelled", "awarded"].includes(record.record_status)) {
+  if (["cancelled", "awarded", "closed", "historical"].includes(record.record_status)
+      || record.temporal_status === "CLOSED") {
     await writeJsonAtomic(recordFilePath(baseDir, "archive", record.id), record);
   } else {
     await removeRecordFile(baseDir, "archive", record.id);
@@ -269,6 +277,340 @@ export async function ingestBatch({
   }
 }
 
+function resolveEvidenceTarget(records, evidence) {
+  if (evidence.record_id) {
+    const byId = records.find((record) => record.id === evidence.record_id);
+    if (!byId) throw new InputValidationError(`Evidence record_id was not found: ${evidence.record_id}`);
+    return byId;
+  }
+  const title = String(evidence.record_title ?? evidence.input_title ?? "").trim().toLowerCase();
+  const matches = records.filter((record) => record.title.toLowerCase() === title);
+  if (matches.length !== 1) {
+    throw new InputValidationError("Evidence title must resolve to exactly one opportunity", {
+      record_title: evidence.record_title ?? evidence.input_title ?? null,
+      matches: matches.map((record) => record.id),
+    });
+  }
+  return matches[0];
+}
+
+export async function verifyOpportunitySources({
+  baseDir,
+  evidenceFile,
+  kernelUrl = null,
+  kernelRequired = false,
+  actor = "system:source-verification",
+}) {
+  await ensureDirectoryLayout(baseDir);
+  const releaseLock = await acquireExclusiveLock(baseDir, "source-verification");
+  const startedAt = isoTimestamp();
+  const runId = createRunId("verify", startedAt);
+  const publishResults = [];
+  try {
+    const payload = await readJson(evidenceFile);
+    if (!payload) throw new InputValidationError(`Evidence batch does not exist or is empty: ${evidenceFile}`);
+    validateEvidenceBatch(payload);
+    payload.evidence.forEach((item) => normalizeEvidenceItem(item, {
+      timestamp: payload.retrieved_at ?? startedAt,
+    }));
+    const records = await loadRecords(path.join(baseDir, "normalized"));
+    if (records.length === 0) throw new InputValidationError("No normalized opportunities exist; run ingest first");
+
+    const resolved = payload.evidence.map((item) => ({ item, record: resolveEvidenceTarget(records, item) }));
+    const targetIds = resolved.map(({ record }) => record.id);
+    if (new Set(targetIds).size !== targetIds.length) {
+      throw new InputValidationError("Evidence batch contains more than one item for the same opportunity");
+    }
+
+    const updatedRecords = [];
+    const summary = {
+      processed: 0,
+      verified: 0,
+      needs_source_verification: 0,
+      open: 0,
+      deadline_today: 0,
+      closed: 0,
+      forecast: 0,
+      program_only: 0,
+      unknown: 0,
+    };
+    for (const { item, record } of resolved) {
+      const timestamp = isoTimestamp();
+      const updated = applySourceEvidence(record, item, { timestamp, actor });
+      validateNormalizedRecord(updated);
+      await persistRecordToStages(baseDir, updated);
+      updatedRecords.push(updated);
+      summary.processed += 1;
+      if (updated.validation.status === VALIDATION_STATUS.VERIFIED) summary.verified += 1;
+      else summary.needs_source_verification += 1;
+      const temporalKey = updated.temporal_status.toLowerCase();
+      summary[temporalKey] = (summary[temporalKey] ?? 0) + 1;
+
+      const event = createOpportunityEvent({
+        type: EVENT_TYPES.OPPORTUNITY_SOURCE_VERIFIED,
+        entityId: updated.id,
+        source: "aegentix-cybercore-source-verification",
+        actor,
+        correlationId: runId,
+        payload: {
+          record: updated,
+          evidence_id: updated.validation.evidence_id,
+          verification_status: updated.validation.status,
+          temporal_status: updated.temporal_status,
+          run_id: runId,
+        },
+      });
+      await emitAndPublish({ baseDir, event, kernelUrl, kernelRequired, publishResults });
+    }
+
+    const manifest = {
+      run_id: runId,
+      operation: "source-verification",
+      status: "COMPLETED",
+      evidence_batch_id: payload.batch_id,
+      evidence_file: path.relative(baseDir, evidenceFile),
+      evidence_hash: artifactHash(payload),
+      started_at: startedAt,
+      completed_at: isoTimestamp(),
+      summary,
+      record_ids: updatedRecords.map((record) => record.id),
+      kernel_publication: {
+        configured: Boolean(kernelUrl),
+        required: kernelRequired,
+        published: publishResults.filter((item) => item.published).length,
+        failed: publishResults.filter((item) => item.attempted && !item.published).length,
+        results: publishResults,
+      },
+    };
+    manifest.manifest_hash = artifactHash(manifest);
+    await writeJsonAtomic(path.join(baseDir, "runs", `${runId}.json`), manifest);
+    return { manifest, records: updatedRecords };
+  } catch (error) {
+    const failure = {
+      run_id: runId,
+      operation: "source-verification",
+      status: "FAILED",
+      started_at: startedAt,
+      failed_at: isoTimestamp(),
+      error: { name: error.name, code: error.code ?? "UNEXPECTED_ERROR", message: error.message, details: error.details ?? null },
+    };
+    failure.manifest_hash = artifactHash(failure);
+    await writeJsonAtomic(path.join(baseDir, "runs", `${runId}.failed.json`), failure).catch(() => {});
+    throw error;
+  } finally {
+    await releaseLock();
+  }
+}
+
+function selectRecords(records, selector) {
+  if (!selector || selector === "all") return records;
+  const selected = records.filter((record) => record.id === selector);
+  if (selected.length !== 1) throw new InputValidationError(`Opportunity record not found: ${selector}`);
+  return selected;
+}
+
+export async function scoreOpportunities({
+  baseDir,
+  policyFile,
+  recordSelector = "all",
+  kernelUrl = null,
+  kernelRequired = false,
+  actor = "system:strategic-intelligence",
+}) {
+  await ensureDirectoryLayout(baseDir);
+  const releaseLock = await acquireExclusiveLock(baseDir, "strategic-intelligence");
+  const startedAt = isoTimestamp();
+  const runId = createRunId("score", startedAt);
+  const publishResults = [];
+  try {
+    const policy = await readJson(policyFile);
+    if (!policy) throw new InputValidationError(`Intelligence policy does not exist: ${policyFile}`);
+    const records = await loadRecords(path.join(baseDir, "normalized"));
+    const selected = selectRecords(records, recordSelector);
+    const updatedRecords = [];
+    const summary = { selected: selected.length, scored: 0, skipped_unverified: 0, priorities: { P0: 0, P1: 0, P2: 0 } };
+
+    for (const record of selected) {
+      if (record.validation?.status !== VALIDATION_STATUS.VERIFIED) {
+        if (recordSelector !== "all") {
+          throw new InputValidationError("Selected record is not strictly VERIFIED", {
+            record_id: record.id,
+            validation_status: record.validation?.status ?? null,
+          });
+        }
+        summary.skipped_unverified += 1;
+        continue;
+      }
+      const updated = scoreOpportunity(record, policy, { timestamp: isoTimestamp(), actor });
+      validateNormalizedRecord(updated);
+      await persistRecordToStages(baseDir, updated);
+      updatedRecords.push(updated);
+      summary.scored += 1;
+      summary.priorities[updated.priority] += 1;
+
+      const event = createOpportunityEvent({
+        type: EVENT_TYPES.OPPORTUNITY_INTELLIGENCE_SCORED,
+        entityId: updated.id,
+        source: "aegentix-cybercore-strategic-intelligence",
+        actor,
+        correlationId: runId,
+        payload: {
+          record: updated,
+          intelligence: updated.intelligence,
+          run_id: runId,
+        },
+      });
+      await emitAndPublish({ baseDir, event, kernelUrl, kernelRequired, publishResults });
+    }
+
+    const manifest = {
+      run_id: runId,
+      operation: "strategic-intelligence",
+      status: "COMPLETED",
+      policy_version: policy.version,
+      policy_file: path.relative(baseDir, policyFile),
+      policy_hash: artifactHash(policy),
+      record_selector: recordSelector,
+      started_at: startedAt,
+      completed_at: isoTimestamp(),
+      summary,
+      record_ids: updatedRecords.map((record) => record.id),
+      kernel_publication: {
+        configured: Boolean(kernelUrl),
+        required: kernelRequired,
+        published: publishResults.filter((item) => item.published).length,
+        failed: publishResults.filter((item) => item.attempted && !item.published).length,
+        results: publishResults,
+      },
+    };
+    manifest.manifest_hash = artifactHash(manifest);
+    await writeJsonAtomic(path.join(baseDir, "runs", `${runId}.json`), manifest);
+    return { manifest, records: updatedRecords };
+  } catch (error) {
+    const failure = {
+      run_id: runId,
+      operation: "strategic-intelligence",
+      status: "FAILED",
+      policy_file: path.relative(baseDir, policyFile),
+      record_selector: recordSelector,
+      started_at: startedAt,
+      failed_at: isoTimestamp(),
+      error: { name: error.name, code: error.code ?? "UNEXPECTED_ERROR", message: error.message, details: error.details ?? null },
+    };
+    failure.manifest_hash = artifactHash(failure);
+    await writeJsonAtomic(path.join(baseDir, "runs", `${runId}.failed.json`), failure).catch(() => {});
+    throw error;
+  } finally {
+    await releaseLock();
+  }
+}
+
+export async function routeOpportunities({
+  baseDir,
+  policyFile,
+  recordSelector = "all",
+  kernelUrl = null,
+  kernelRequired = false,
+  actor = "system:commercialization-routing",
+}) {
+  await ensureDirectoryLayout(baseDir);
+  const releaseLock = await acquireExclusiveLock(baseDir, "commercialization-routing");
+  const startedAt = isoTimestamp();
+  const runId = createRunId("route", startedAt);
+  const publishResults = [];
+  try {
+    const policy = await readJson(policyFile);
+    if (!policy) throw new InputValidationError(`Commercialization policy does not exist: ${policyFile}`);
+    const records = await loadRecords(path.join(baseDir, "normalized"));
+    const selected = selectRecords(records, recordSelector);
+    const missingScores = selected
+      .filter((record) => record.validation?.status === VALIDATION_STATUS.VERIFIED)
+      .filter((record) => record.intelligence?.status !== "SCORED")
+      .map((record) => record.id);
+    if (missingScores.length > 0) {
+      throw new InputValidationError("Commercialization routing requires verified records to be scored first", {
+        record_ids: missingScores,
+      });
+    }
+
+    const updatedRecords = [];
+    const summary = {
+      selected: selected.length,
+      routed: 0,
+      ready_for_human_review: 0,
+      treasury_handoffs_executed: 0,
+      by_status: {},
+    };
+    for (const record of selected) {
+      const updated = routeOpportunity(record, policy, { timestamp: isoTimestamp(), actor });
+      validateNormalizedRecord(updated);
+      await persistRecordToStages(baseDir, updated);
+      updatedRecords.push(updated);
+      summary.routed += 1;
+      summary.by_status[updated.commercialization.status]
+        = (summary.by_status[updated.commercialization.status] ?? 0) + 1;
+      if (updated.commercialization.status === "READY_FOR_HUMAN_REVIEW") {
+        summary.ready_for_human_review += 1;
+      }
+
+      const event = createOpportunityEvent({
+        type: EVENT_TYPES.OPPORTUNITY_COMMERCIAL_ROUTE_IDENTIFIED,
+        entityId: updated.id,
+        source: "aegentix-cybercore-commercialization-routing",
+        actor,
+        correlationId: runId,
+        payload: {
+          record: updated,
+          commercialization: updated.commercialization,
+          treasury_handoff_executed: false,
+          run_id: runId,
+        },
+      });
+      await emitAndPublish({ baseDir, event, kernelUrl, kernelRequired, publishResults });
+    }
+
+    const manifest = {
+      run_id: runId,
+      operation: "commercialization-routing",
+      status: "COMPLETED",
+      policy_version: policy.version,
+      policy_file: path.relative(baseDir, policyFile),
+      policy_hash: artifactHash(policy),
+      record_selector: recordSelector,
+      started_at: startedAt,
+      completed_at: isoTimestamp(),
+      summary,
+      record_ids: updatedRecords.map((record) => record.id),
+      kernel_publication: {
+        configured: Boolean(kernelUrl),
+        required: kernelRequired,
+        published: publishResults.filter((item) => item.published).length,
+        failed: publishResults.filter((item) => item.attempted && !item.published).length,
+        results: publishResults,
+      },
+    };
+    manifest.manifest_hash = artifactHash(manifest);
+    await writeJsonAtomic(path.join(baseDir, "runs", `${runId}.json`), manifest);
+    return { manifest, records: updatedRecords };
+  } catch (error) {
+    const failure = {
+      run_id: runId,
+      operation: "commercialization-routing",
+      status: "FAILED",
+      policy_file: path.relative(baseDir, policyFile),
+      record_selector: recordSelector,
+      started_at: startedAt,
+      failed_at: isoTimestamp(),
+      error: { name: error.name, code: error.code ?? "UNEXPECTED_ERROR", message: error.message, details: error.details ?? null },
+    };
+    failure.manifest_hash = artifactHash(failure);
+    await writeJsonAtomic(path.join(baseDir, "runs", `${runId}.failed.json`), failure).catch(() => {});
+    throw error;
+  } finally {
+    await releaseLock();
+  }
+}
+
 export async function authorizeOpportunity({
   baseDir,
   recordId,
@@ -356,10 +698,16 @@ export async function getIntakeStatus(baseDir) {
   const byState = {};
   const byPriority = {};
   const byValidation = {};
+  const byTemporalStatus = {};
+  const byCommercialStatus = {};
   for (const record of records) {
     byState[record.action_state] = (byState[record.action_state] ?? 0) + 1;
     byPriority[record.priority ?? "UNPRIORITIZED"] = (byPriority[record.priority ?? "UNPRIORITIZED"] ?? 0) + 1;
     byValidation[record.validation.status] = (byValidation[record.validation.status] ?? 0) + 1;
+    byTemporalStatus[record.temporal_status ?? "UNKNOWN"]
+      = (byTemporalStatus[record.temporal_status ?? "UNKNOWN"] ?? 0) + 1;
+    byCommercialStatus[record.commercialization?.status ?? "NOT_EVALUATED"]
+      = (byCommercialStatus[record.commercialization?.status ?? "NOT_EVALUATED"] ?? 0) + 1;
   }
   return {
     base_dir: baseDir,
@@ -368,5 +716,7 @@ export async function getIntakeStatus(baseDir) {
     by_state: byState,
     by_priority: byPriority,
     by_validation: byValidation,
+    by_temporal_status: byTemporalStatus,
+    by_commercial_status: byCommercialStatus,
   };
 }

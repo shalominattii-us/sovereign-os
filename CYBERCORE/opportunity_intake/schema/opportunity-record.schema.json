@@ -1,59 +1,26 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://aegentix.local/schemas/cybercore/opportunity-record-v1.json",
-  "title": "AEGENTIX Cybercore OpportunityRecord",
+  "$id": "https://aegentix.local/schemas/cybercore/opportunity-record-v2.json",
+  "title": "AEGENTIX Cybercore OpportunityRecord v2",
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schema_version",
-    "id",
-    "deduplication_key",
-    "deduplication_aliases",
-    "title_hash",
-    "title",
-    "source",
-    "issuer",
-    "jurisdiction",
-    "type",
-    "program_type",
-    "procurement_type",
-    "market_entry",
-    "sector",
-    "identifier",
-    "publication_date",
-    "deadline",
-    "value",
-    "eligibility",
-    "compliance_requirements",
-    "registration_requirements",
-    "submission_method",
-    "attachments",
-    "strategic_fit",
-    "strategic_score",
-    "revenue_path",
-    "revenue_probability",
-    "priority",
-    "route",
-    "record_status",
-    "action_state",
-    "state_history",
-    "lifecycle_history",
-    "validation",
-    "authorization",
-    "created_at",
-    "updated_at"
+    "schema_version", "id", "deduplication_key", "deduplication_aliases", "title_hash", "title",
+    "official_title", "source", "source_evidence", "issuer", "jurisdiction", "type", "program_type",
+    "procurement_type", "market_entry", "sector", "identifier", "publication_date", "deadline", "value",
+    "eligibility", "compliance_requirements", "registration_requirements", "submission_method", "attachments",
+    "strategic_fit", "strategic_score", "revenue_path", "revenue_probability", "priority", "route",
+    "temporal_status", "intelligence", "commercialization", "record_status", "action_state", "state_history",
+    "lifecycle_history", "validation", "authorization", "created_at", "updated_at"
   ],
   "properties": {
-    "schema_version": { "const": "1.0.0" },
+    "schema_version": { "const": "2.0.0" },
     "id": { "type": "string", "pattern": "^opp_[a-f0-9]{24}$" },
     "deduplication_key": { "type": "string", "minLength": 10 },
-    "deduplication_aliases": {
-      "type": "array",
-      "items": { "type": "string" },
-      "uniqueItems": true
-    },
+    "deduplication_aliases": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
     "title_hash": { "type": "string", "pattern": "^[a-f0-9]{24}$" },
     "title": { "type": "string", "minLength": 1 },
+    "official_title": { "type": ["string", "null"] },
     "source": {
       "type": "object",
       "additionalProperties": false,
@@ -65,9 +32,13 @@
         "source_checked_at": { "type": ["string", "null"], "format": "date-time" }
       }
     },
+    "source_evidence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/sourceEvidence" }
+    },
     "issuer": { "type": ["string", "null"] },
     "jurisdiction": { "type": ["string", "null"] },
-    "type": { "enum": ["funding", "procurement"] },
+    "type": { "enum": ["funding", "procurement", "challenge_prize", "technology_need"] },
     "program_type": { "type": ["string", "null"] },
     "procurement_type": {
       "type": ["string", "null"],
@@ -81,16 +52,7 @@
     "identifier": { "type": ["string", "null"] },
     "publication_date": { "type": ["string", "null"], "format": "date" },
     "deadline": { "type": ["string", "null"], "format": "date" },
-    "value": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["amount", "currency", "description"],
-      "properties": {
-        "amount": { "type": ["number", "null"], "minimum": 0 },
-        "currency": { "type": ["string", "null"] },
-        "description": { "type": ["string", "null"] }
-      }
-    },
+    "value": { "$ref": "#/$defs/value" },
     "eligibility": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
     "compliance_requirements": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
     "registration_requirements": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
@@ -109,29 +71,155 @@
     "revenue_path": { "type": ["string", "null"] },
     "revenue_probability": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
     "priority": { "type": ["string", "null"], "enum": ["P0", "P1", "P2", null] },
-    "route": { "enum": ["CYBERCORE/FUNDING/GRANTS", "CYBERCORE/PROCUREMENT"] },
-    "record_status": {
-      "enum": ["forecast", "active", "amended", "extended", "cancelled", "awarded", "unknown"]
-    },
-    "action_state": {
+    "route": {
       "enum": [
-        "DISCOVERED",
-        "VALIDATED",
-        "STRATEGIC_MATCHED",
-        "REVENUE_PATH_IDENTIFIED",
-        "HUMAN_REVIEW_REQUIRED",
-        "AUTHORIZED_ACTION"
+        "CYBERCORE/FUNDING/GRANTS",
+        "CYBERCORE/PROCUREMENT",
+        "CYBERCORE/CHALLENGES_PRIZES",
+        "CYBERCORE/TECHNOLOGY_NEEDS"
       ]
     },
-    "state_history": {
-      "type": "array",
-      "minItems": 1,
-      "items": { "$ref": "#/$defs/stateTransition" }
+    "temporal_status": { "enum": ["OPEN", "DEADLINE_TODAY", "CLOSED", "FORECAST", "PROGRAM_ONLY", "UNKNOWN"] },
+    "intelligence": { "$ref": "#/$defs/intelligence" },
+    "commercialization": { "$ref": "#/$defs/commercialization" },
+    "record_status": {
+      "enum": ["forecast", "active", "amended", "extended", "cancelled", "awarded", "closed", "historical", "program", "unknown"]
     },
-    "lifecycle_history": {
-      "type": "array",
-      "minItems": 1,
-      "items": { "$ref": "#/$defs/lifecycleEntry" }
+    "action_state": {
+      "enum": ["DISCOVERED", "VALIDATED", "STRATEGIC_MATCHED", "REVENUE_PATH_IDENTIFIED", "HUMAN_REVIEW_REQUIRED", "AUTHORIZED_ACTION"]
+    },
+    "state_history": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/stateTransition" } },
+    "lifecycle_history": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/lifecycleEntry" } },
+    "validation": { "$ref": "#/$defs/validation" },
+    "authorization": { "$ref": "#/$defs/authorization" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "value": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["amount", "currency", "description"],
+      "properties": {
+        "amount": { "type": ["number", "null"], "minimum": 0 },
+        "currency": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] }
+      }
+    },
+    "sourceEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "evidence_id", "record_id", "record_title", "classification", "source_authority",
+        "source_urls", "retrieved_at", "official", "checks", "evidence_summary", "confidence"
+      ],
+      "properties": {
+        "schema_version": { "const": "1.0.0" },
+        "evidence_id": { "type": "string", "pattern": "^evidence_[a-f0-9]{24}$" },
+        "record_id": { "type": ["string", "null"] },
+        "record_title": { "type": ["string", "null"] },
+        "classification": {
+          "enum": ["VERIFIED_ACTIVE", "VERIFIED_FORECAST", "VERIFIED_PROGRAM", "HISTORICAL", "GENERIC_CATEGORY", "NO_AUTHORITATIVE_MATCH"]
+        },
+        "source_authority": { "type": ["string", "null"] },
+        "source_urls": { "type": "array", "items": { "type": "string", "pattern": "^https://" }, "uniqueItems": true },
+        "retrieved_at": { "type": "string", "format": "date-time" },
+        "official": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["title", "issuer", "identifier", "publication_date", "deadline", "status", "value", "eligibility", "submission_method"],
+          "properties": {
+            "title": { "type": ["string", "null"] },
+            "issuer": { "type": ["string", "null"] },
+            "identifier": { "type": ["string", "null"] },
+            "publication_date": { "type": ["string", "null"], "format": "date" },
+            "deadline": { "type": ["string", "null"], "format": "date" },
+            "status": { "type": ["string", "null"] },
+            "value": { "$ref": "#/$defs/value" },
+            "eligibility": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+            "submission_method": { "type": ["string", "null"] }
+          }
+        },
+        "checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["issuer_verified", "identifier_verified", "deadline_verified"],
+          "properties": {
+            "issuer_verified": { "type": "boolean" },
+            "identifier_verified": { "type": "boolean" },
+            "deadline_verified": { "type": "boolean" }
+          }
+        },
+        "evidence_summary": { "type": "string", "minLength": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "intelligence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "policy_version", "dimensions", "score", "recommended_priority", "explanation", "scored_at"],
+      "properties": {
+        "status": { "enum": ["NOT_EVALUATED", "SCORED"] },
+        "policy_version": { "type": ["string", "null"] },
+        "methodology": { "type": "string" },
+        "input_signals": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["declared_strategic_tier", "declared_priority"],
+          "properties": {
+            "declared_strategic_tier": { "type": "string" },
+            "declared_priority": { "type": "string" }
+          }
+        },
+        "dimensions": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["sector_fit", "revenue_probability", "funding_probability", "implementation_complexity", "strategic_alignment"],
+          "properties": {
+            "sector_fit": { "type": "number", "minimum": 0, "maximum": 100 },
+            "revenue_probability": { "type": "number", "minimum": 0, "maximum": 100 },
+            "funding_probability": { "type": "number", "minimum": 0, "maximum": 100 },
+            "implementation_complexity": { "type": "number", "minimum": 0, "maximum": 100 },
+            "strategic_alignment": { "type": "number", "minimum": 0, "maximum": 100 }
+          }
+        },
+        "weights": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        },
+        "score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "recommended_priority": { "type": ["string", "null"], "enum": ["P0", "P1", "P2", null] },
+        "explanation": { "type": "array", "items": { "type": "string" } },
+        "scored_at": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "commercialization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "policy_version", "candidate_paths", "primary_path", "rationale", "evaluated_at", "treasury_labs_handoff"],
+      "properties": {
+        "status": {
+          "enum": ["NOT_EVALUATED", "READY_FOR_HUMAN_REVIEW", "MONITOR_FORECAST", "CLOSED_NO_ACTION", "PROGRAM_DISCOVERY_ONLY", "SOURCE_VERIFICATION_REQUIRED", "NO_ROUTE_IDENTIFIED"]
+        },
+        "policy_version": { "type": ["string", "null"] },
+        "candidate_paths": { "type": "array", "items": { "$ref": "#/$defs/commercialPath" }, "uniqueItems": true },
+        "primary_path": { "anyOf": [{ "$ref": "#/$defs/commercialPath" }, { "type": "null" }] },
+        "rationale": { "type": "array", "items": { "type": "string" } },
+        "evaluated_at": { "type": ["string", "null"], "format": "date-time" },
+        "treasury_labs_handoff": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "reason"],
+          "properties": {
+            "status": { "enum": ["NOT_EVALUATED", "HUMAN_APPROVAL_REQUIRED", "BLOCKED"] },
+            "reason": { "type": "string", "minLength": 1 },
+            "automatic_dispatch": { "type": "boolean", "const": false }
+          }
+        }
+      }
+    },
+    "commercialPath": {
+      "enum": ["grant", "research_partnership", "prime_bid", "subcontractor_position", "prototype_demonstration", "licensing_commercialization", "supplier_contract", "consulting_engagement"]
     },
     "validation": {
       "type": "object",
@@ -141,36 +229,32 @@
         "status": { "enum": ["VERIFIED", "NEEDS_SOURCE_VERIFICATION", "INVALID"] },
         "missing_fields": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
         "issues": { "type": "array", "items": { "type": "string" } },
-        "validated_at": { "type": ["string", "null"], "format": "date-time" }
+        "validated_at": { "type": ["string", "null"], "format": "date-time" },
+        "evidence_classification": { "type": "string" },
+        "temporal_status": { "type": "string" },
+        "evidence_id": { "type": "string" },
+        "checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["issuer_verified", "identifier_verified", "deadline_verified"],
+          "properties": {
+            "issuer_verified": { "type": "boolean" },
+            "identifier_verified": { "type": "boolean" },
+            "deadline_verified": { "type": "boolean" }
+          }
+        }
       }
     },
     "authorization": {
       "type": "object",
-      "required": [
-        "mode",
-        "status",
-        "prohibited_automatic_actions",
-        "approved_action",
-        "authorization_id",
-        "authorized_by",
-        "authorized_at",
-        "expires_at"
-      ],
+      "additionalProperties": false,
+      "required": ["mode", "status", "prohibited_automatic_actions", "approved_action", "authorization_id", "authorized_by", "authorized_at", "expires_at"],
       "properties": {
         "mode": { "const": "human_required" },
         "status": { "enum": ["PENDING", "AUTHORIZED"] },
         "prohibited_automatic_actions": {
           "type": "array",
-          "items": {
-            "enum": [
-              "submission",
-              "registration",
-              "bid",
-              "contract",
-              "financial_commitment",
-              "external_communication"
-            ]
-          },
+          "items": { "enum": ["submission", "registration", "bid", "contract", "financial_commitment", "external_communication"] },
           "uniqueItems": true
         },
         "approved_action": { "type": ["string", "null"] },
@@ -180,13 +264,8 @@
         "expires_at": { "type": ["string", "null"], "format": "date-time" },
         "review_snapshot_hash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
         "artifact_hash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" }
-      },
-      "additionalProperties": false
+      }
     },
-    "created_at": { "type": "string", "format": "date-time" },
-    "updated_at": { "type": "string", "format": "date-time" }
-  },
-  "$defs": {
     "stateTransition": {
       "type": "object",
       "additionalProperties": false,

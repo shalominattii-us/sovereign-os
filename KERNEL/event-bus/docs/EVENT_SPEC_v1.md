@@ -16,7 +16,9 @@ Whether an event is emitted by WorldMonitor, Treasury, XR, Robotics, or an auton
 2. **Events are immutable.** Once appended to the log, an event is never modified or deleted. If state needs to change, a new corrective event is appended.
 3. **State is disposable.** In-memory state can be deleted at any time and deterministically reconstructed by replaying the log.
 4. **Replay is isolated.** Replaying the log rebuilds in-memory state but **never** invokes external adapters or side effects (e.g., sending commands to robots or submitting exchange orders).
-5. **Cybercore opportunity actions are human-gated.** Opportunity discovery, validation, deduplication, and queue projection are internal state operations. Submissions, registrations, bids, contracts, financial commitments, and external communications require a separate, scoped, unexpired human authorization artifact.
+5. **Cybercore opportunity actions are human-gated.** Opportunity discovery, source verification, scoring, commercialization routing, deduplication, and queue projection are internal state operations. Submissions, registrations, bids, contracts, financial commitments, external communications, and Treasury Labs handoffs require a separate, scoped, unexpired human authorization artifact.
+6. **Cybercore intelligence is evidence-bound.** Strategic scoring requires strict source verification; actionable commercial routing requires a score and an open temporal status. Source-evidence changes invalidate downstream scores, routes, and prior authorization.
+7. **Treasury handoff is never automatic.** `OPPORTUNITY_COMMERCIAL_ROUTE_IDENTIFIED` must carry `treasury_handoff_executed: false`; a ready route stops at `HUMAN_REVIEW_REQUIRED`.
 
 ---
 
@@ -107,10 +109,13 @@ The `cybercore` domain supports the following canonical event types:
 |---|---|
 | `OPPORTUNITY_DISCOVERED` | A normalized opportunity entered the event log. |
 | `OPPORTUNITY_MERGED` | An amendment, extension, cancellation, award, or forecast transition merged into a stable record. |
-| `OPPORTUNITY_VALIDATED` | Source evidence satisfied the validation policy. |
+| `OPPORTUNITY_VALIDATED` | Source evidence satisfied the legacy validation policy. |
+| `OPPORTUNITY_SOURCE_VERIFIED` | An authoritative evidence item was normalized and a strict verification plus temporal decision was recorded. |
+| `OPPORTUNITY_INTELLIGENCE_SCORED` | A verified record received a versioned, deterministic five-dimension score. |
+| `OPPORTUNITY_COMMERCIAL_ROUTE_IDENTIFIED` | Commercial candidate paths and Treasury Labs handoff gating were evaluated without external dispatch. |
 | `OPPORTUNITY_STATE_TRANSITIONED` | The internal lifecycle advanced by an allowed transition. |
 | `OPPORTUNITY_REVIEW_QUEUED` | The opportunity entered a human review queue. |
 | `OPPORTUNITY_AUTHORIZATION_RECORDED` | A scoped human authorization artifact was recorded. |
 | `OPPORTUNITY_ARCHIVED` | A terminal opportunity status was retained for audit. |
 
-Cybercore routing is deliberately projection-only. A downstream executor may act only after independently verifying the record state, authorization scope, artifact integrity, and expiry.
+Cybercore routing is deliberately projection-only. Source-verification, scoring, and commercialization events carry complete record snapshots so replay is deterministic. A downstream executor may act only after independently verifying the record state, evidence, score, commercial route, authorization scope, artifact integrity, and expiry.

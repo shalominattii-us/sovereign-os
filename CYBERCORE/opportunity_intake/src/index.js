@@ -3,6 +3,9 @@ export {
   getIntakeStatus,
   ingestBatch,
   listOpportunities,
+  routeOpportunities,
+  scoreOpportunities,
+  verifyOpportunitySources,
 } from "./engine.js";
 
 export {
@@ -20,8 +23,26 @@ export {
 export {
   ACTION_STATES,
   AUTHORIZATION_MODE,
+  COMMERCIAL_PATHS,
+  COMMERCIAL_ROUTE_STATUSES,
+  COMMERCIALIZATION_POLICY_VERSION,
+  EVIDENCE_CLASSIFICATIONS,
   EVENT_TYPES,
   EXTERNAL_ACTIONS,
+  INTELLIGENCE_POLICY_VERSION,
   PRIORITIES,
   ROUTES,
+  TEMPORAL_STATUSES,
+  TREASURY_HANDOFF_STATUSES,
 } from "./constants.js";
+
+export { scoreOpportunity } from "./intelligence.js";
+export { routeOpportunity } from "./commercialization.js";
+
+export {
+  applySourceEvidence,
+  assessEvidenceVerification,
+  evaluateTemporalStatus,
+  normalizeEvidenceItem,
+  validateEvidenceBatch,
+} from "./verification.js";

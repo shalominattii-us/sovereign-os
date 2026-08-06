@@ -3,7 +3,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const STORE_PATH = path.resolve(__dirname, "../../data/events.jsonl");
+const DEFAULT_STORE_PATH = path.resolve(__dirname, "../../data/events.jsonl");
+const STORE_PATH = process.env.EVENT_STORE_PATH
+  ? path.resolve(process.env.EVENT_STORE_PATH)
+  : DEFAULT_STORE_PATH;
 
 /**
  * Ensure the data directory and events file exist.

@@ -20,6 +20,13 @@ function normalizedRecord() {
     title: "Kernel Projection Opportunity",
     priority: "P0",
     action_state: "HUMAN_REVIEW_REQUIRED",
+    source_evidence: [{ evidence_id: "evidence_0123456789abcdef01234567" }],
+    validation: { status: "VERIFIED" },
+    intelligence: { status: "SCORED", score: 82.5 },
+    commercialization: {
+      status: "READY_FOR_HUMAN_REVIEW",
+      treasury_labs_handoff: { status: "HUMAN_APPROVAL_REQUIRED", automatic_dispatch: false },
+    },
     authorization: { mode: "human_required", status: "PENDING" },
   };
 }
@@ -63,6 +70,57 @@ test("Cybercore policy rejects non-human authorization actors", () => {
   assert.match(result.reason, /human actor/);
 });
 
+test("Cybercore policy requires evidence on source-verification events", () => {
+  const record = normalizedRecord();
+  record.source_evidence = [];
+  const result = validate({
+    domain: "cybercore",
+    type: "OPPORTUNITY_SOURCE_VERIFIED",
+    payload: { record, authorization_mode: "human_required" },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /evidence/);
+});
+
+test("Cybercore policy requires verified records for intelligence events", () => {
+  const record = normalizedRecord();
+  record.validation.status = "NEEDS_SOURCE_VERIFICATION";
+  const result = validate({
+    domain: "cybercore",
+    type: "OPPORTUNITY_INTELLIGENCE_SCORED",
+    payload: { record, authorization_mode: "human_required" },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /verified, scored/);
+});
+
+test("Cybercore policy blocks automatic Treasury Labs handoff", () => {
+  const result = validate({
+    domain: "cybercore",
+    type: "OPPORTUNITY_COMMERCIAL_ROUTE_IDENTIFIED",
+    payload: {
+      record: normalizedRecord(),
+      authorization_mode: "human_required",
+      treasury_handoff_executed: true,
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /no automatic Treasury handoff/);
+});
+
+test("Cybercore policy accepts a ready route that stops at explicit human review", () => {
+  const result = validate({
+    domain: "cybercore",
+    type: "OPPORTUNITY_COMMERCIAL_ROUTE_IDENTIFIED",
+    payload: {
+      record: normalizedRecord(),
+      authorization_mode: "human_required",
+      treasury_handoff_executed: false,
+    },
+  });
+  assert.deepEqual(result, { ok: true });
+});
+
 test("Cybercore projector creates records and priority queues deterministically", () => {
   resetCybercoreState();
   const record = normalizedRecord();
@@ -78,6 +136,35 @@ test("Cybercore projector creates records and priority queues deterministically"
   assert.equal(state.cybercore.opportunities[record.id].title, record.title);
   assert.deepEqual(state.cybercore.queues.P0, [record.id]);
   assert.equal(state.eventCount, 1);
+});
+
+test("Cybercore projector replays verification, scoring, and routing record snapshots", () => {
+  resetCybercoreState();
+  const record = normalizedRecord();
+  const eventTypes = [
+    "OPPORTUNITY_SOURCE_VERIFIED",
+    "OPPORTUNITY_INTELLIGENCE_SCORED",
+    "OPPORTUNITY_COMMERCIAL_ROUTE_IDENTIFIED",
+  ];
+  eventTypes.forEach((type, index) => {
+    const snapshot = {
+      ...record,
+      intelligence: { ...record.intelligence, score: 80 + index },
+    };
+    apply({
+      event_id: `evt-v2-${index}`,
+      timestamp: 1786017600000 + index,
+      domain: "cybercore",
+      type,
+      entity_id: record.id,
+      payload: { record: snapshot, authorization_mode: "human_required", treasury_handoff_executed: false },
+    });
+  });
+
+  assert.equal(state.cybercore.opportunities[record.id].intelligence.score, 82);
+  assert.equal(state.cybercore.opportunities[record.id].commercialization.status, "READY_FOR_HUMAN_REVIEW");
+  assert.deepEqual(state.cybercore.queues.P0, [record.id]);
+  assert.equal(state.eventCount, 3);
 });
 
 test("Cybercore projector records human authorization without external execution", () => {

@@ -1,11 +1,14 @@
 import {
   ACTION_STATES,
   AUTHORIZATION_MODE,
+  COMMERCIAL_ROUTE_STATUSES,
   EXTERNAL_ACTIONS,
+  INTELLIGENCE_POLICY_VERSION,
   RECORD_SCHEMA_VERSION,
   ROUTES,
   STATE_ORDER,
   STRATEGIC_TIERS,
+  TREASURY_HANDOFF_STATUSES,
   VALIDATION_STATUS,
 } from "./constants.js";
 import {
@@ -60,12 +63,45 @@ function normalizedSource(input, context) {
 
 function nextStateCandidate(record) {
   if (record.validation.status !== VALIDATION_STATUS.VERIFIED) return ACTION_STATES.DISCOVERED;
-  if (record.strategic_fit.score === null && record.strategic_fit.tier === STRATEGIC_TIERS.UNASSESSED.label) {
-    return ACTION_STATES.VALIDATED;
+  if (record.intelligence?.status !== "SCORED") return ACTION_STATES.VALIDATED;
+  if (record.commercialization?.status === COMMERCIAL_ROUTE_STATUSES.READY_FOR_HUMAN_REVIEW) {
+    return ACTION_STATES.HUMAN_REVIEW_REQUIRED;
   }
-  if (!record.revenue_path) return ACTION_STATES.STRATEGIC_MATCHED;
-  if (!record.priority) return ACTION_STATES.REVENUE_PATH_IDENTIFIED;
-  return ACTION_STATES.HUMAN_REVIEW_REQUIRED;
+  return ACTION_STATES.STRATEGIC_MATCHED;
+}
+
+function routeForType(type) {
+  if (type === "procurement") return ROUTES.PROCUREMENT;
+  if (type === "challenge_prize") return ROUTES.CHALLENGE_PRIZE;
+  if (type === "technology_need") return ROUTES.TECHNOLOGY_NEED;
+  return ROUTES.FUNDING_GRANTS;
+}
+
+function unassessedIntelligence() {
+  return {
+    status: "NOT_EVALUATED",
+    policy_version: INTELLIGENCE_POLICY_VERSION,
+    dimensions: null,
+    score: null,
+    recommended_priority: null,
+    explanation: [],
+    scored_at: null,
+  };
+}
+
+function unevaluatedCommercialization() {
+  return {
+    status: COMMERCIAL_ROUTE_STATUSES.NOT_EVALUATED,
+    policy_version: null,
+    candidate_paths: [],
+    primary_path: null,
+    rationale: [],
+    evaluated_at: null,
+    treasury_labs_handoff: {
+      status: TREASURY_HANDOFF_STATUSES.NOT_EVALUATED,
+      reason: "commercialization routing has not been evaluated",
+    },
+  };
 }
 
 function advanceInternalState(record, timestamp) {
@@ -108,7 +144,9 @@ export function normalizeOpportunity(input, context) {
     deduplication_aliases: [],
     title_hash: titleHash(title),
     title,
+    official_title: null,
     source,
+    source_evidence: [],
     issuer: normalizeWhitespace(input.issuer),
     jurisdiction: normalizeWhitespace(input.jurisdiction),
     type,
@@ -130,7 +168,10 @@ export function normalizeOpportunity(input, context) {
     revenue_path: normalizeWhitespace(input.revenue_path),
     revenue_probability: nullableNumber(input.revenue_probability),
     priority: normalizeWhitespace(input.priority),
-    route: type === "procurement" ? ROUTES.PROCUREMENT : ROUTES.FUNDING_GRANTS,
+    route: routeForType(type),
+    temporal_status: "UNKNOWN",
+    intelligence: unassessedIntelligence(),
+    commercialization: unevaluatedCommercialization(),
     record_status: normalizeWhitespace(input.record_status)?.toLowerCase() ?? "unknown",
     action_state: ACTION_STATES.DISCOVERED,
     state_history: [{
@@ -166,6 +207,7 @@ export function normalizeOpportunity(input, context) {
     identifier: record.identifier,
     source_url: record.source.source_url,
     source_checked_at: record.source.source_checked_at,
+    source_evidence: record.source_evidence,
   });
   record = advanceInternalState(record, timestamp);
   validateNormalizedRecord(record);
@@ -186,12 +228,14 @@ export function mergeOpportunity(existing, incoming, context) {
       ...(incoming.deduplication_aliases ?? []),
     ]),
     title: preferIncoming(existing.title, incoming.title),
+    official_title: preferIncoming(existing.official_title, incoming.official_title),
     source: {
       channel: preferIncoming(existing.source?.channel, incoming.source?.channel),
       batch_id: context.batchId,
       source_url: preferIncoming(existing.source?.source_url, incoming.source?.source_url),
       source_checked_at: preferIncoming(existing.source?.source_checked_at, incoming.source?.source_checked_at),
     },
+    source_evidence: existing.source_evidence ?? incoming.source_evidence ?? [],
     issuer: preferIncoming(existing.issuer, incoming.issuer),
     jurisdiction: preferIncoming(existing.jurisdiction, incoming.jurisdiction),
     type: preferIncoming(existing.type, incoming.type),
@@ -227,6 +271,9 @@ export function mergeOpportunity(existing, incoming, context) {
     revenue_probability: incoming.revenue_probability ?? existing.revenue_probability,
     priority: preferIncoming(existing.priority, incoming.priority),
     route: incoming.route ?? existing.route,
+    temporal_status: existing.temporal_status ?? incoming.temporal_status ?? "UNKNOWN",
+    intelligence: existing.intelligence ?? incoming.intelligence ?? unassessedIntelligence(),
+    commercialization: existing.commercialization ?? incoming.commercialization ?? unevaluatedCommercialization(),
     record_status: incoming.record_status === "unknown" ? existing.record_status : incoming.record_status,
     lifecycle_history: [
       ...(existing.lifecycle_history ?? []),
@@ -240,12 +287,34 @@ export function mergeOpportunity(existing, incoming, context) {
     updated_at: timestamp,
   };
 
-  merged.validation = assessSourceVerification({
-    issuer: merged.issuer,
-    identifier: merged.identifier,
-    source_url: merged.source.source_url,
-    source_checked_at: merged.source.source_checked_at,
-  });
+  const evidenceBoundFieldsChanged = [
+    ["issuer", existing.issuer, incoming.issuer],
+    ["identifier", existing.identifier, incoming.identifier],
+    ["publication_date", existing.publication_date, incoming.publication_date],
+    ["deadline", existing.deadline, incoming.deadline],
+    ["source_url", existing.source?.source_url, incoming.source?.source_url],
+  ].some(([, before, after]) => after !== null && after !== undefined && after !== "" && after !== before);
+
+  merged.validation = evidenceBoundFieldsChanged
+    ? assessSourceVerification({
+        issuer: merged.issuer,
+        identifier: merged.identifier,
+        source_url: merged.source.source_url,
+        source_checked_at: merged.source.source_checked_at,
+        source_evidence: [],
+      })
+    : existing.validation ?? assessSourceVerification({
+        issuer: merged.issuer,
+        identifier: merged.identifier,
+        source_url: merged.source.source_url,
+        source_checked_at: merged.source.source_checked_at,
+        source_evidence: merged.source_evidence,
+      });
+  if (evidenceBoundFieldsChanged) {
+    merged.temporal_status = "UNKNOWN";
+    merged.intelligence = unassessedIntelligence();
+    merged.commercialization = unevaluatedCommercialization();
+  }
   let advanced = advanceInternalState(merged, timestamp);
   if (
     existing.action_state === ACTION_STATES.AUTHORIZED_ACTION

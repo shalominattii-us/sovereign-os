@@ -1,46 +1,52 @@
-# AEGENTIX Cybercore Opportunity Intake
+# AEGENTIX Cybercore Opportunity Intelligence Pipeline
 
-**Version:** 1.0.0
+**Version:** 2.0.0
 
 **Authorization policy:** `human_required`
 
 **Operating invariant:** Event first. State second. No external action without authorization.
 
-This module converts opportunity intelligence into deterministic, deduplicated, replayable `OpportunityRecord` artifacts. It supports funding and procurement routes, amendment merging, strategic priority queues, append-only audit events, optional publication to the Sovereign OS Kernel, and scoped human authorization records.
+This module converts opportunity intelligence into deterministic, deduplicated, replayable `OpportunityRecord` artifacts. Version 2 adds **authoritative source verification**, **five-dimension strategic intelligence scoring**, and **commercialization routing** while preserving a strict human boundary before any Treasury Labs handoff or external act.
 
-> The bundled 2026-08-06 intake contains only information present in the supplied directive. Missing identifiers, deadlines, funding values, eligibility rules, and authoritative URLs remain explicitly null or empty. Records do not advance from `DISCOVERED` until the required source-verification fields are supplied.
+> Discovery does not imply validation. Validation does not imply strategic fit. Strategic fit does not imply authorization. Authorization records a scoped human decision; it does not execute a submission, registration, bid, contract, financial commitment, or communication.
+
+The implementation contract is defined in [`docs/INTELLIGENCE_PIPELINE_SPEC_v2.md`](docs/INTELLIGENCE_PIPELINE_SPEC_v2.md).[1]
 
 ## Architecture
 
 ```text
-incoming/
-    ↓ structural validation
-normalizer + deterministic identity
-    ↓ issuer + identifier + title_hash + deadline
-merge / deduplication
-    ↓ source verification
-strategic classification and priority routing
-    ↓
-HUMAN_REVIEW_REQUIRED
-    ↓ explicit human authorization artifact
+incoming opportunity batch
+    ↓ structural validation + deterministic identity
+DISCOVERED
+    ↓ authoritative evidence batch
+VALIDATED or retained in source discovery
+    ↓ versioned deterministic five-dimension policy
+STRATEGIC_MATCHED
+    ↓ versioned commercialization route policy
+HUMAN_REVIEW_REQUIRED, monitor-only, closed, or discovery-only
+    ↓ explicit scoped human authorization artifact
 AUTHORIZED_ACTION
 ```
 
-The pipeline writes a local append-only event log under `events/`. When `--kernel-url` is provided, the same events are sent to the Kernel’s `cybercore` domain and projected into the global world state. Kernel replay only reconstructs state; it does not dispatch opportunity side effects.
+Every layer appends a domain event and persists the complete updated record snapshot. Optional Kernel publication projects the same snapshots into the `cybercore` world-state slice. Replay reconstructs state without dispatching opportunity side effects.
 
 ## Workflow directories
 
 | Directory | Purpose | Version-control policy |
 |---|---|---|
-| `incoming/` | Source batches approved for intake | Tracked |
-| `normalized/` | Canonical `OpportunityRecord` files | Generated locally |
-| `validated/` | Records with issuer, identifier, HTTPS source, and source-check timestamp | Generated locally |
-| `strategic_queue/` | Strategically matched records | Generated locally |
-| `commercial_pipeline/` | Records with an identified revenue path | Generated locally |
-| `archive/` | Cancelled or awarded records retained for audit | Generated locally |
+| `incoming/` | Approved discovery batches | Tracked |
+| `evidence/` | Authoritative source-evidence batches | Tracked |
+| `policy/` | Versioned scoring and commercialization policies | Tracked |
+| `schema/` | Intake, evidence, and OpportunityRecord JSON Schemas | Tracked |
+| `normalized/` | Canonical v2 records | Generated locally |
+| `validated/` | Strictly verified records | Generated locally |
+| `strategic_queue/` | Verified and scored records | Generated locally |
+| `commercial_pipeline/` | Open, actionable records awaiting human review | Generated locally |
+| `archive/` | Closed, historical, cancelled, or awarded records | Generated locally |
 | `events/` | Append-only JSONL domain events | Generated locally |
 | `authorizations/` | Scoped human authorization artifacts | Generated locally |
-| `runs/` | Hashed success or failure manifests | Generated locally |
+| `runs/` | Hashed success and failure manifests | Generated locally |
+| `research/` | Source-research audit notes | Tracked |
 
 ## Quick start
 
@@ -52,49 +58,105 @@ npm test
 npm link
 ```
 
-Run the supplied intake exactly as directed:
+First ingest the bundled discovery batch:
 
 ```bash
-aegentix_cybercore_ingest \
+aegentix_cybercore_ingest ingest \
   --source opportunity_intake \
   --batch 2026-08-06 \
   --mode normalize_validate \
   --authorization human_required
 ```
 
-The command defaults to `incoming/AEGENTIX-CYBERCORE-OPP-INTAKE-2026-08-06.json`. It never submits, registers, bids, contracts, commits funds, or communicates externally.
-
-## Kernel publication
-
-Start the Kernel, then provide its intent endpoint to the command:
+Then execute all three intelligence layers:
 
 ```bash
-aegentix_cybercore_ingest \
-  --batch 2026-08-06 \
-  --kernel-url http://localhost:8080/intent \
-  --kernel-required
+aegentix_cybercore_ingest pipeline
 ```
 
-Without `--kernel-required`, a temporarily unavailable Kernel is reported in the run manifest while the durable local intake still completes. With `--kernel-required`, publication failure causes the run to fail closed.
-
-## Review operations
-
-Use the built-in inspection commands to view records without mutating them.
+The one-command pipeline is equivalent to:
 
 ```bash
-aegentix_cybercore_ingest status
-aegentix_cybercore_ingest list
-aegentix_cybercore_ingest list --priority P0
-aegentix_cybercore_ingest list --state DISCOVERED --json
+aegentix_cybercore_ingest verify \
+  --evidence evidence/source-verification-2026-08-06.json
+
+aegentix_cybercore_ingest score \
+  --record all \
+  --policy policy/intelligence-policy-v1.json
+
+aegentix_cybercore_ingest route \
+  --record all \
+  --commercialization-policy policy/commercialization-policy-v1.json
 ```
 
-The initial directive produces **22 normalized records**. Because the directive did not include authoritative source URLs, identifiers, or verification timestamps for most records, the first run correctly retains them in `DISCOVERED` with `NEEDS_SOURCE_VERIFICATION` rather than claiming that the opportunities are active or eligible.
+Each operation writes a hashed run manifest. A source-evidence refresh resets downstream scores, routes, and any stale authorization so the updated record must pass the pipeline again.
 
-## Source verification and amendment ingestion
+## Acceptance snapshot for the bundled batch
 
-To advance a record, ingest an updated record containing the authoritative issuer, identifier, HTTPS source URL, and `source_checked_at` timestamp. The deduplication engine first matches exact deterministic keys and then uses normalized `issuer + identifier` to merge deadline extensions, amendments, cancellations, awards, and forecast-to-active changes. Stable record identity is preserved, while changed keys are retained in `deduplication_aliases` for auditability.
+The bundled evidence batch records the authoritative pages and retrieval timestamp for all 22 intake titles.[2] The acceptance run on 2026-08-06 produced these deterministic results:
 
-A verified, strategically classified record with a revenue path and priority advances through the internal lifecycle to `HUMAN_REVIEW_REQUIRED`. These transitions only organize internal state and do not authorize an external act.
+| Outcome | Count |
+|---|---:|
+| Normalized records | 22 |
+| Strictly verified specific opportunities | 13 |
+| Retained for further source verification | 9 |
+| Open | 3 |
+| Deadline on evaluation date | 2 |
+| Closed or historical | 7 |
+| Forecast | 1 |
+| Program/category only | 6 |
+| Unknown exact match | 3 |
+| Scored | 13 |
+| Ready for explicit human review | 5 |
+| Treasury Labs handoffs executed | **0** |
+
+The five records routed to `HUMAN_REVIEW_REQUIRED` are NSF AI Infrastructure Hubs, NSF E-RISE, DOE ARPA-E HORNIG, Promise Neighborhoods, and the verified HUD Fair Housing Education and Outreach opportunity. A `DEADLINE_TODAY` classification does not assert that the submission cutoff time remains available; it requires expedited human confirmation.
+
+## Source verification
+
+Strict `VERIFIED` status requires all of the following:
+
+| Requirement | Enforcement |
+|---|---|
+| Authoritative source | At least one HTTPS URL and named source authority |
+| Retrieval provenance | ISO 8601 UTC timestamp |
+| Issuer | Present and marked directly verified |
+| Identifier | Present and marked directly verified |
+| Deadline | Present and marked directly verified |
+| Specificity | Specific active, forecast, or historical opportunity rather than a broad category |
+
+Program portfolios and broad procurement channels retain useful evidence, but remain `NEEDS_SOURCE_VERIFICATION` until a specific child solicitation is identified. No-match records remain in source discovery.
+
+## Strategic intelligence
+
+The intelligence policy computes five 0–100 dimensions: `sector_fit`, `revenue_probability`, `funding_probability`, `implementation_complexity`, and `strategic_alignment`. The weighted score is:
+
+```text
+sector_fit × 0.25
++ revenue_probability × 0.20
++ funding_probability × 0.20
++ (100 - implementation_complexity) × 0.15
++ strategic_alignment × 0.20
+```
+
+The calculation is an **explainable deterministic heuristic**, not a statistically calibrated prediction. Every score stores its policy version, weights, input signals, dimensions, and explanation. Unknown sectors receive a documented default rather than an invented record-specific value.
+
+## Commercialization routing
+
+The route policy can identify these internal candidate paths:
+
+| Path | Typical signal |
+|---|---|
+| `grant` | Grant or cooperative agreement |
+| `research_partnership` | Consortium, partnership, or research delivery |
+| `prime_bid` | Standard procurement |
+| `subcontractor_position` | Explicit subcontractor market entry |
+| `prototype_demonstration` | CSO, challenge, accelerator, or prototype |
+| `licensing_commercialization` | Technology need or commercialization program |
+| `supplier_contract` | Supplier or vendor channel |
+| `consulting_engagement` | Consulting, advisory, or assessment work |
+
+Only a strictly verified, scored, open record can become `READY_FOR_HUMAN_REVIEW`. Forecasts are monitor-only, closed records are no-action, program categories remain discovery-only, and incomplete records remain source-verification work. The Treasury Labs handoff object is `HUMAN_APPROVAL_REQUIRED` only for ready records and `BLOCKED` otherwise. `automatic_dispatch` is always `false`.
 
 ## Human authorization
 
@@ -104,7 +166,7 @@ A human may record one narrowly scoped authorization after reviewing a `HUMAN_RE
 aegentix_cybercore_ingest authorize opp_0123456789abcdef01234567 \
   --action bid \
   --authorized-by human:reviewer-001 \
-  --reason "Compliance review completed; bid preparation approved" \
+  --reason "Evidence, score, route, and compliance reviewed; bid preparation approved" \
   --ticket-reference DECISION-2026-001 \
   --expires-at 2026-08-07T18:00:00.000Z
 ```
@@ -112,33 +174,40 @@ aegentix_cybercore_ingest authorize opp_0123456789abcdef01234567 \
 | Control | Enforcement |
 |---|---|
 | Human identity | `authorized_by` must use `human:<identifier>` |
-| Scope | One of `submission`, `registration`, `bid`, `contract`, `financial_commitment`, or `external_communication` |
-| Integrity | Artifact and reviewed record snapshot are SHA-256 bound |
+| Scope | One enumerated external action |
+| Integrity | Artifact and complete reviewed v2 snapshot are SHA-256 bound |
 | Expiry | Defaults to 24 hours and must be in the future |
 | State | Only `HUMAN_REVIEW_REQUIRED` can advance to `AUTHORIZED_ACTION` |
-| Execution | The command records authorization only; it never executes the external action |
+| Evidence change | Revokes authorization and resets score and route |
+| Execution | Authorization is recorded only; no external action is executed |
 
-Any downstream executor must call `assertAuthorizedExternalAction(record, artifact, action)` before acting. That guard rejects missing, tampered, expired, or out-of-scope authorizations.
+Any downstream executor must call `assertAuthorizedExternalAction(record, artifact, action)`. The guard rejects missing, tampered, expired, stale, or out-of-scope authorization.
 
-## Record schema
+## Kernel publication
 
-The machine-readable contract is available at `schema/opportunity-record.schema.json`. Canonical records include source provenance, funding or procurement classification, routing, strategic fit, revenue path, validation evidence, lifecycle history, state history, and authorization controls.
-
-The deterministic deduplication key is:
-
-```text
-normalized_issuer + normalized_identifier + title_hash + normalized_deadline
-```
-
-The identifier is `opp_` followed by the first 24 hexadecimal characters of the SHA-256 digest of that key.
-
-## Verification
-
-Run both suites before deployment:
+Provide the Kernel intent endpoint to any ingest or pipeline command:
 
 ```bash
+aegentix_cybercore_ingest pipeline \
+  --kernel-url http://localhost:8080/intent \
+  --kernel-required
+```
+
+Without `--kernel-required`, unavailable Kernel publication is recorded while local durable processing completes. With it, publication fails closed. The Kernel validates evidence, score, route, human-gate, and zero-automatic-handoff invariants before projection.
+
+## Inspection and verification
+
+```bash
+aegentix_cybercore_ingest status --json
+aegentix_cybercore_ingest list --state HUMAN_REVIEW_REQUIRED --json
 npm test --prefix CYBERCORE/opportunity_intake
 npm test --prefix KERNEL/event-bus
 ```
 
-A successful implementation reaches `TEST_VERIFIED`. Runtime verification can be performed by starting the Kernel, ingesting with `--kernel-required`, and confirming the `cybercore` slice at `GET /state`. The completed evidence for this implementation is recorded in [`VERIFICATION.md`](VERIFICATION.md).
+The complete reproducible acceptance evidence is recorded in [`VERIFICATION.md`](VERIFICATION.md).[3]
+
+## References
+
+[1]: docs/INTELLIGENCE_PIPELINE_SPEC_v2.md "Cybercore Intelligence Pipeline Specification v2"
+[2]: evidence/source-verification-2026-08-06.json "Authoritative source-evidence batch"
+[3]: VERIFICATION.md "Cybercore verification evidence"

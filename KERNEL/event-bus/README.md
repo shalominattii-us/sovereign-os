@@ -51,6 +51,12 @@ npm install
 npm start
 ```
 
+For an isolated or explicitly bound event log, set `EVENT_STORE_PATH` before startup. Relative paths resolve from the process working directory; the default remains `data/events.jsonl`.
+
+```bash
+EVENT_STORE_PATH=/var/lib/aegentix/worldmonitor-events.jsonl PORT=8080 npm start
+```
+
 ---
 
 ## API
@@ -98,7 +104,7 @@ curl http://localhost:8080/health
 
 ## Event Sourcing
 
-Every accepted event is immediately appended to `data/events.jsonl` as a single JSON line. The `cybercore` domain projects opportunity records, P0–P2 queues, and authorization artifacts; its router branch is intentionally side-effect-free.
+Every accepted event is immediately appended to `data/events.jsonl` as a single JSON line. The `cybercore` domain projects OpportunityRecord v2 snapshots, P0–P2 queues, source evidence, strategic scores, commercialization routes, and authorization artifacts; its router branch is intentionally side-effect-free.
 
 ```jsonl
 {"event_id":"bfcc9438-...","timestamp":1782855560406,"domain":"robotics","type":"MOVE_COMMAND","entity_id":"robot-arm-01","payload":{...}}
@@ -110,6 +116,23 @@ On startup, `index.js` reads this file and replays all events through the projec
 - **Audit trail** — every command is permanently recorded
 - **Deterministic replay** — state can always be reconstructed from scratch
 - **Debuggability** — inspect the log to understand exactly what happened and when
+
+---
+
+## Cybercore v2 policy and replay
+
+The Kernel accepts `OPPORTUNITY_SOURCE_VERIFIED`, `OPPORTUNITY_INTELLIGENCE_SCORED`, and `OPPORTUNITY_COMMERCIAL_ROUTE_IDENTIFIED` in addition to the original intake events. Each event carries a complete record snapshot so replay produces the same evidence, score, route, queue, and human-review state.
+
+| Boundary | Kernel enforcement |
+|---|---|
+| Source verification | Requires a nonempty evidence array and validation decision |
+| Intelligence scoring | Requires `VERIFIED` source state and `SCORED` intelligence state |
+| Commercial routing | Requires a route decision and `treasury_handoff_executed: false` |
+| Ready route | Must stop at `HUMAN_REVIEW_REQUIRED` with `HUMAN_APPROVAL_REQUIRED` |
+| Authorization | Requires an integrity-bound artifact and an explicit `human:<identifier>` actor |
+| Replay | Projector only; the router is never invoked |
+
+The Kernel does not contact Treasury Labs, submit an application, place a bid, register an account, sign a contract, commit funds, or send an external message for any Cybercore event.
 
 ---
 

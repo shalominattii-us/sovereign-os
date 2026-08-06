@@ -1,12 +1,17 @@
 import {
   ACTION_STATES,
   AUTHORIZATION_MODE,
+  COMMERCIAL_PATHS,
+  COMMERCIAL_ROUTE_STATUSES,
+  EVIDENCE_CLASSIFICATIONS,
   MARKET_ENTRY_TYPES,
   OPPORTUNITY_TYPES,
   PROCUREMENT_TYPES,
   PRIORITIES,
   RECORD_STATUSES,
   ROUTES,
+  TEMPORAL_STATUSES,
+  TREASURY_HANDOFF_STATUSES,
   VALIDATION_STATUS,
 } from "./constants.js";
 import { InputValidationError } from "./errors.js";
@@ -25,6 +30,10 @@ function isFiniteNumberOrNull(value) {
 
 function issue(path, message) {
   return { path, message };
+}
+
+function isScore(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
 }
 
 export function validateBatchInput(batch) {
@@ -155,11 +164,123 @@ export function validateNormalizedRecord(record) {
     }
   }
 
+  if (!Array.isArray(record.source_evidence)) {
+    issues.push(issue("source_evidence", "must be an array"));
+  } else {
+    record.source_evidence.forEach((evidence, index) => {
+      const prefix = `source_evidence[${index}]`;
+      if (!/^evidence_[a-f0-9]{24}$/.test(evidence?.evidence_id ?? "")) {
+        issues.push(issue(`${prefix}.evidence_id`, "must be a deterministic evidence ID"));
+      }
+      if (!EVIDENCE_CLASSIFICATIONS.includes(evidence?.classification)) {
+        issues.push(issue(`${prefix}.classification`, "is invalid"));
+      }
+      if (!Array.isArray(evidence?.source_urls) || evidence.source_urls.some((url) => !URL_PATTERN.test(url))) {
+        issues.push(issue(`${prefix}.source_urls`, "must be an array of HTTPS URLs"));
+      }
+      if (!ISO_TIMESTAMP_PATTERN.test(evidence?.retrieved_at ?? "")) {
+        issues.push(issue(`${prefix}.retrieved_at`, "must be an ISO timestamp"));
+      }
+      for (const check of ["issuer_verified", "identifier_verified", "deadline_verified"]) {
+        if (typeof evidence?.checks?.[check] !== "boolean") {
+          issues.push(issue(`${prefix}.checks.${check}`, "must be a boolean"));
+        }
+      }
+      if (typeof evidence?.confidence !== "number" || evidence.confidence < 0 || evidence.confidence > 1) {
+        issues.push(issue(`${prefix}.confidence`, "must be between 0 and 1"));
+      }
+    });
+  }
+
+  if (!TEMPORAL_STATUSES.includes(record.temporal_status)) {
+    issues.push(issue("temporal_status", "is invalid"));
+  }
+
+  if (!record.intelligence || typeof record.intelligence !== "object" || Array.isArray(record.intelligence)) {
+    issues.push(issue("intelligence", "must be an object"));
+  } else {
+    if (!["NOT_EVALUATED", "SCORED"].includes(record.intelligence.status)) {
+      issues.push(issue("intelligence.status", "must be NOT_EVALUATED or SCORED"));
+    }
+    if (record.intelligence.status === "SCORED") {
+      for (const dimension of [
+        "sector_fit",
+        "revenue_probability",
+        "funding_probability",
+        "implementation_complexity",
+        "strategic_alignment",
+      ]) {
+        if (!isScore(record.intelligence.dimensions?.[dimension])) {
+          issues.push(issue(`intelligence.dimensions.${dimension}`, "must be between 0 and 100"));
+        }
+      }
+      if (!isScore(record.intelligence.score)) issues.push(issue("intelligence.score", "must be between 0 and 100"));
+      if (!Object.values(PRIORITIES).includes(record.intelligence.recommended_priority)) {
+        issues.push(issue("intelligence.recommended_priority", "is invalid"));
+      }
+      if (!Array.isArray(record.intelligence.explanation)) {
+        issues.push(issue("intelligence.explanation", "must be an array"));
+      }
+      if (!ISO_TIMESTAMP_PATTERN.test(record.intelligence.scored_at ?? "")) {
+        issues.push(issue("intelligence.scored_at", "must be an ISO timestamp"));
+      }
+    }
+  }
+
+  if (!record.commercialization || typeof record.commercialization !== "object"
+      || Array.isArray(record.commercialization)) {
+    issues.push(issue("commercialization", "must be an object"));
+  } else {
+    if (!Object.values(COMMERCIAL_ROUTE_STATUSES).includes(record.commercialization.status)) {
+      issues.push(issue("commercialization.status", "is invalid"));
+    }
+    if (!Array.isArray(record.commercialization.candidate_paths)
+        || record.commercialization.candidate_paths.some((path) => !COMMERCIAL_PATHS.includes(path))) {
+      issues.push(issue("commercialization.candidate_paths", "must contain recognized paths"));
+    }
+    if (record.commercialization.primary_path
+        && !COMMERCIAL_PATHS.includes(record.commercialization.primary_path)) {
+      issues.push(issue("commercialization.primary_path", "is invalid"));
+    }
+    if (!Array.isArray(record.commercialization.rationale)) {
+      issues.push(issue("commercialization.rationale", "must be an array"));
+    }
+    if (!Object.values(TREASURY_HANDOFF_STATUSES).includes(record.commercialization.treasury_labs_handoff?.status)) {
+      issues.push(issue("commercialization.treasury_labs_handoff.status", "is invalid"));
+    }
+    if (record.commercialization.status === "READY_FOR_HUMAN_REVIEW") {
+      if (record.validation?.status !== VALIDATION_STATUS.VERIFIED) {
+        issues.push(issue("commercialization.status", "ready routing requires VERIFIED source status"));
+      }
+      if (!["OPEN", "DEADLINE_TODAY"].includes(record.temporal_status)) {
+        issues.push(issue("commercialization.status", "ready routing requires an actionable temporal status"));
+      }
+      if (record.intelligence?.status !== "SCORED" || !record.commercialization.primary_path) {
+        issues.push(issue("commercialization.status", "ready routing requires a score and primary path"));
+      }
+      if (record.commercialization.treasury_labs_handoff?.status !== "HUMAN_APPROVAL_REQUIRED") {
+        issues.push(issue("commercialization.treasury_labs_handoff.status", "must require human approval"));
+      }
+    }
+  }
+
   if (!Object.values(VALIDATION_STATUS).includes(record.validation?.status)) {
     issues.push(issue("validation.status", "is invalid"));
   }
   if (!Array.isArray(record.validation?.missing_fields)) issues.push(issue("validation.missing_fields", "must be an array"));
   if (!Array.isArray(record.validation?.issues)) issues.push(issue("validation.issues", "must be an array"));
+  if (record.validation?.evidence_classification
+      && !EVIDENCE_CLASSIFICATIONS.includes(record.validation.evidence_classification)) {
+    issues.push(issue("validation.evidence_classification", "is invalid"));
+  }
+  if (record.validation?.temporal_status
+      && !TEMPORAL_STATUSES.includes(record.validation.temporal_status)) {
+    issues.push(issue("validation.temporal_status", "is invalid"));
+  }
+  if (record.validation?.status === VALIDATION_STATUS.VERIFIED
+      && (!Array.isArray(record.source_evidence) || record.source_evidence.length === 0)) {
+    issues.push(issue("source_evidence", "VERIFIED records require authoritative evidence"));
+  }
 
   if (record.authorization?.mode !== AUTHORIZATION_MODE) {
     issues.push(issue("authorization.mode", `must equal ${AUTHORIZATION_MODE}`));
@@ -201,6 +322,9 @@ export function assessSourceVerification(record) {
   if (!record.identifier) missing.push("identifier");
   if (!record.source_url) missing.push("source_url");
   if (!record.source_checked_at) missing.push("source_checked_at");
+  if (!Array.isArray(record.source_evidence) || record.source_evidence.length === 0) {
+    missing.push("source_evidence");
+  }
 
   const invalid = [];
   if (record.source_url && !URL_PATTERN.test(record.source_url)) invalid.push("source_url must use HTTPS");

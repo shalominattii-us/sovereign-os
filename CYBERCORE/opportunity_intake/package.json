@@ -1,7 +1,7 @@
 {
   "name": "@aegentix/cybercore-opportunity-intake",
-  "version": "1.0.0",
-  "description": "Deterministic, event-first opportunity intake for AEGENTIX Cybercore",
+  "version": "2.0.0",
+  "description": "Deterministic source verification, strategic intelligence, and human-gated commercialization routing for AEGENTIX Cybercore",
   "type": "module",
   "private": true,
   "bin": {
@@ -9,6 +9,10 @@
   },
   "scripts": {
     "ingest": "node ./bin/aegentix_cybercore_ingest.js ingest",
+    "verify": "node ./bin/aegentix_cybercore_ingest.js verify",
+    "score": "node ./bin/aegentix_cybercore_ingest.js score",
+    "route": "node ./bin/aegentix_cybercore_ingest.js route",
+    "pipeline": "node ./bin/aegentix_cybercore_ingest.js pipeline",
     "status": "node ./bin/aegentix_cybercore_ingest.js status",
     "test": "node --test ./tests/*.test.js"
   },

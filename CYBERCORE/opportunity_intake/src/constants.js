@@ -1,4 +1,7 @@
-export const RECORD_SCHEMA_VERSION = "1.0.0";
+export const RECORD_SCHEMA_VERSION = "2.0.0";
+export const EVIDENCE_SCHEMA_VERSION = "1.0.0";
+export const INTELLIGENCE_POLICY_VERSION = "1.0.0";
+export const COMMERCIALIZATION_POLICY_VERSION = "1.0.0";
 export const EVENT_VERSION = 1;
 export const CYBERCORE_DOMAIN = "cybercore";
 export const DEFAULT_SOURCE = "opportunity_intake";
@@ -47,6 +50,8 @@ export const STRATEGIC_TIERS = Object.freeze({
 export const OPPORTUNITY_TYPES = Object.freeze([
   "funding",
   "procurement",
+  "challenge_prize",
+  "technology_need",
 ]);
 
 export const PROCUREMENT_TYPES = Object.freeze([
@@ -78,6 +83,9 @@ export const EVENT_TYPES = Object.freeze({
   OPPORTUNITY_DISCOVERED: "OPPORTUNITY_DISCOVERED",
   OPPORTUNITY_MERGED: "OPPORTUNITY_MERGED",
   OPPORTUNITY_VALIDATED: "OPPORTUNITY_VALIDATED",
+  OPPORTUNITY_SOURCE_VERIFIED: "OPPORTUNITY_SOURCE_VERIFIED",
+  OPPORTUNITY_INTELLIGENCE_SCORED: "OPPORTUNITY_INTELLIGENCE_SCORED",
+  OPPORTUNITY_COMMERCIAL_ROUTE_IDENTIFIED: "OPPORTUNITY_COMMERCIAL_ROUTE_IDENTIFIED",
   OPPORTUNITY_STATE_TRANSITIONED: "OPPORTUNITY_STATE_TRANSITIONED",
   OPPORTUNITY_REVIEW_QUEUED: "OPPORTUNITY_REVIEW_QUEUED",
   OPPORTUNITY_AUTHORIZATION_RECORDED: "OPPORTUNITY_AUTHORIZATION_RECORDED",
@@ -87,6 +95,53 @@ export const EVENT_TYPES = Object.freeze({
 export const ROUTES = Object.freeze({
   FUNDING_GRANTS: "CYBERCORE/FUNDING/GRANTS",
   PROCUREMENT: "CYBERCORE/PROCUREMENT",
+  CHALLENGE_PRIZE: "CYBERCORE/CHALLENGES_PRIZES",
+  TECHNOLOGY_NEED: "CYBERCORE/TECHNOLOGY_NEEDS",
+});
+
+export const EVIDENCE_CLASSIFICATIONS = Object.freeze([
+  "VERIFIED_ACTIVE",
+  "VERIFIED_FORECAST",
+  "VERIFIED_PROGRAM",
+  "HISTORICAL",
+  "GENERIC_CATEGORY",
+  "NO_AUTHORITATIVE_MATCH",
+]);
+
+export const TEMPORAL_STATUSES = Object.freeze([
+  "OPEN",
+  "DEADLINE_TODAY",
+  "CLOSED",
+  "FORECAST",
+  "PROGRAM_ONLY",
+  "UNKNOWN",
+]);
+
+export const COMMERCIAL_PATHS = Object.freeze([
+  "grant",
+  "research_partnership",
+  "prime_bid",
+  "subcontractor_position",
+  "prototype_demonstration",
+  "licensing_commercialization",
+  "supplier_contract",
+  "consulting_engagement",
+]);
+
+export const COMMERCIAL_ROUTE_STATUSES = Object.freeze({
+  NOT_EVALUATED: "NOT_EVALUATED",
+  READY_FOR_HUMAN_REVIEW: "READY_FOR_HUMAN_REVIEW",
+  MONITOR_FORECAST: "MONITOR_FORECAST",
+  CLOSED_NO_ACTION: "CLOSED_NO_ACTION",
+  PROGRAM_DISCOVERY_ONLY: "PROGRAM_DISCOVERY_ONLY",
+  SOURCE_VERIFICATION_REQUIRED: "SOURCE_VERIFICATION_REQUIRED",
+  NO_ROUTE_IDENTIFIED: "NO_ROUTE_IDENTIFIED",
+});
+
+export const TREASURY_HANDOFF_STATUSES = Object.freeze({
+  NOT_EVALUATED: "NOT_EVALUATED",
+  HUMAN_APPROVAL_REQUIRED: "HUMAN_APPROVAL_REQUIRED",
+  BLOCKED: "BLOCKED",
 });
 
 export const VALIDATION_STATUS = Object.freeze({
@@ -102,5 +157,8 @@ export const RECORD_STATUSES = Object.freeze([
   "extended",
   "cancelled",
   "awarded",
+  "closed",
+  "historical",
+  "program",
   "unknown",
 ]);

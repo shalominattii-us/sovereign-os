@@ -19,6 +19,8 @@ export function reviewMaterialHash(record) {
       source_url: record.source?.source_url ?? null,
       source_checked_at: record.source?.source_checked_at ?? null,
     },
+    source_evidence: record.source_evidence ?? [],
+    official_title: record.official_title ?? null,
     issuer: record.issuer,
     jurisdiction: record.jurisdiction,
     type: record.type,
@@ -40,11 +42,18 @@ export function reviewMaterialHash(record) {
     revenue_probability: record.revenue_probability,
     priority: record.priority,
     route: record.route,
+    temporal_status: record.temporal_status ?? "UNKNOWN",
+    intelligence: record.intelligence ?? null,
+    commercialization: record.commercialization ?? null,
     record_status: record.record_status,
     validation: {
       status: record.validation?.status ?? null,
       missing_fields: record.validation?.missing_fields ?? [],
       issues: record.validation?.issues ?? [],
+      evidence_classification: record.validation?.evidence_classification ?? null,
+      temporal_status: record.validation?.temporal_status ?? null,
+      evidence_id: record.validation?.evidence_id ?? null,
+      checks: record.validation?.checks ?? null,
     },
   });
 }
