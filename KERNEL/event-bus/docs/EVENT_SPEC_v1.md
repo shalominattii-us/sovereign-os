@@ -16,6 +16,7 @@ Whether an event is emitted by WorldMonitor, Treasury, XR, Robotics, or an auton
 2. **Events are immutable.** Once appended to the log, an event is never modified or deleted. If state needs to change, a new corrective event is appended.
 3. **State is disposable.** In-memory state can be deleted at any time and deterministically reconstructed by replaying the log.
 4. **Replay is isolated.** Replaying the log rebuilds in-memory state but **never** invokes external adapters or side effects (e.g., sending commands to robots or submitting exchange orders).
+5. **Cybercore opportunity actions are human-gated.** Opportunity discovery, validation, deduplication, and queue projection are internal state operations. Submissions, registrations, bids, contracts, financial commitments, and external communications require a separate, scoped, unexpired human authorization artifact.
 
 ---
 
@@ -73,7 +74,7 @@ Every event is a flat JSON object consisting of three sections: **Envelope**, **
 
 | Field | Type | Description |
 |---|---|---|
-| `domain` | String | The bounded context the event belongs to (e.g., `robotics`, `treasury`, `xr`, `exchange`). |
+| `domain` | String | The bounded context the event belongs to (e.g., `robotics`, `treasury`, `xr`, `exchange`, `cybercore`). |
 | `type` | String | The specific action or state change (e.g., `MOVE_COMMAND`, `ASSET_REGISTERED`). Must be UPPER_SNAKE_CASE. |
 | `entity_id` | String | The unique identifier of the specific entity being affected (e.g., `robot-arm-01`, `wallet-001`). |
 | `payload` | Object | Domain-specific data required to apply the event to the world state or dispatch it to an adapter. |
@@ -95,3 +96,21 @@ During **Replay** (startup), the sequence is restricted:
 1. **Read:** Events are read sequentially from the log.
 2. **Project:** The Projector applies the events to rebuild in-memory state.
 3. **STOP:** The Router is **never** invoked during replay.
+
+---
+
+## 5. Cybercore Opportunity Events
+
+The `cybercore` domain supports the following canonical event types:
+
+| Event type | Meaning |
+|---|---|
+| `OPPORTUNITY_DISCOVERED` | A normalized opportunity entered the event log. |
+| `OPPORTUNITY_MERGED` | An amendment, extension, cancellation, award, or forecast transition merged into a stable record. |
+| `OPPORTUNITY_VALIDATED` | Source evidence satisfied the validation policy. |
+| `OPPORTUNITY_STATE_TRANSITIONED` | The internal lifecycle advanced by an allowed transition. |
+| `OPPORTUNITY_REVIEW_QUEUED` | The opportunity entered a human review queue. |
+| `OPPORTUNITY_AUTHORIZATION_RECORDED` | A scoped human authorization artifact was recorded. |
+| `OPPORTUNITY_ARCHIVED` | A terminal opportunity status was retained for audit. |
+
+Cybercore routing is deliberately projection-only. A downstream executor may act only after independently verifying the record state, authorization scope, artifact integrity, and expiry.

@@ -26,6 +26,16 @@ export async function route(event) {
       // TODO: delegate to adapters/xr/index.js
       break;
 
+    case "cybercore":
+      // Deliberately projection-only. External submissions, registrations, bids,
+      // contracts, financial commitments, and communications require a separate
+      // downstream executor that verifies a scoped human authorization artifact.
+      log("info", "CYBERCORE OPPORTUNITY EVENT PROJECTED — NO EXTERNAL ACTION", {
+        entity_id: event.entity_id,
+        type: event.type,
+      });
+      break;
+
     default:
       log("warn", `No handler registered for domain: ${event.domain}`);
   }

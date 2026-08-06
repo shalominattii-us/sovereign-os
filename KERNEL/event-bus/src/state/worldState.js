@@ -9,5 +9,10 @@ export const state = {
   robots:    {},   // entity_id → { lastCommand, position, updated }
   treasury:  {},   // account_id → { balance, lastTx, updated }
   xr:        {},   // scene_id → { loaded, avatars, updated }
+  cybercore: {
+    opportunities: {},
+    queues: { P0: [], P1: [], P2: [] },
+    authorizations: {},
+  },
   eventCount: 0,   // total events applied since last replay
 };

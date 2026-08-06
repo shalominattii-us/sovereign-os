@@ -10,6 +10,8 @@ export const getRobots      = ()         => state.robots;
 export const getRobot       = (id)       => state.robots[id] ?? null;
 export const getTreasury    = ()         => state.treasury;
 export const getXR          = ()         => state.xr;
+export const getCybercore   = ()         => state.cybercore;
+export const getOpportunity = (id)       => state.cybercore.opportunities[id] ?? null;
 export const getEventCount  = ()         => state.eventCount;
 
 /** Return a full snapshot of the world state (for the /state endpoint). */
@@ -18,6 +20,7 @@ export function getSnapshot() {
     robots:     state.robots,
     treasury:   state.treasury,
     xr:         state.xr,
+    cybercore:  state.cybercore,
     eventCount: state.eventCount,
   };
 }

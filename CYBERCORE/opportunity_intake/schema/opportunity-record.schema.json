@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegentix.local/schemas/cybercore/opportunity-record-v1.json",
+  "title": "AEGENTIX Cybercore OpportunityRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "deduplication_key",
+    "deduplication_aliases",
+    "title_hash",
+    "title",
+    "source",
+    "issuer",
+    "jurisdiction",
+    "type",
+    "program_type",
+    "procurement_type",
+    "market_entry",
+    "sector",
+    "identifier",
+    "publication_date",
+    "deadline",
+    "value",
+    "eligibility",
+    "compliance_requirements",
+    "registration_requirements",
+    "submission_method",
+    "attachments",
+    "strategic_fit",
+    "strategic_score",
+    "revenue_path",
+    "revenue_probability",
+    "priority",
+    "route",
+    "record_status",
+    "action_state",
+    "state_history",
+    "lifecycle_history",
+    "validation",
+    "authorization",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "id": { "type": "string", "pattern": "^opp_[a-f0-9]{24}$" },
+    "deduplication_key": { "type": "string", "minLength": 10 },
+    "deduplication_aliases": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "title_hash": { "type": "string", "pattern": "^[a-f0-9]{24}$" },
+    "title": { "type": "string", "minLength": 1 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["channel", "batch_id", "source_url", "source_checked_at"],
+      "properties": {
+        "channel": { "type": "string", "minLength": 1 },
+        "batch_id": { "type": "string", "minLength": 1 },
+        "source_url": { "type": ["string", "null"], "pattern": "^https://" },
+        "source_checked_at": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "issuer": { "type": ["string", "null"] },
+    "jurisdiction": { "type": ["string", "null"] },
+    "type": { "enum": ["funding", "procurement"] },
+    "program_type": { "type": ["string", "null"] },
+    "procurement_type": {
+      "type": ["string", "null"],
+      "enum": ["RFP", "RFI", "CSO", "OTA", "cooperative_agreement", "consulting", null]
+    },
+    "market_entry": {
+      "type": ["string", "null"],
+      "enum": ["prime", "subcontractor", "technology_partner", "consortium_member", null]
+    },
+    "sector": { "type": ["string", "null"] },
+    "identifier": { "type": ["string", "null"] },
+    "publication_date": { "type": ["string", "null"], "format": "date" },
+    "deadline": { "type": ["string", "null"], "format": "date" },
+    "value": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["amount", "currency", "description"],
+      "properties": {
+        "amount": { "type": ["number", "null"], "minimum": 0 },
+        "currency": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] }
+      }
+    },
+    "eligibility": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "compliance_requirements": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "registration_requirements": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "submission_method": { "type": ["string", "null"] },
+    "attachments": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "strategic_fit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tier", "score"],
+      "properties": {
+        "tier": { "type": "string" },
+        "score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 }
+      }
+    },
+    "strategic_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+    "revenue_path": { "type": ["string", "null"] },
+    "revenue_probability": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "priority": { "type": ["string", "null"], "enum": ["P0", "P1", "P2", null] },
+    "route": { "enum": ["CYBERCORE/FUNDING/GRANTS", "CYBERCORE/PROCUREMENT"] },
+    "record_status": {
+      "enum": ["forecast", "active", "amended", "extended", "cancelled", "awarded", "unknown"]
+    },
+    "action_state": {
+      "enum": [
+        "DISCOVERED",
+        "VALIDATED",
+        "STRATEGIC_MATCHED",
+        "REVENUE_PATH_IDENTIFIED",
+        "HUMAN_REVIEW_REQUIRED",
+        "AUTHORIZED_ACTION"
+      ]
+    },
+    "state_history": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/stateTransition" }
+    },
+    "lifecycle_history": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/lifecycleEntry" }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "missing_fields", "issues", "validated_at"],
+      "properties": {
+        "status": { "enum": ["VERIFIED", "NEEDS_SOURCE_VERIFICATION", "INVALID"] },
+        "missing_fields": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "issues": { "type": "array", "items": { "type": "string" } },
+        "validated_at": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "required": [
+        "mode",
+        "status",
+        "prohibited_automatic_actions",
+        "approved_action",
+        "authorization_id",
+        "authorized_by",
+        "authorized_at",
+        "expires_at"
+      ],
+      "properties": {
+        "mode": { "const": "human_required" },
+        "status": { "enum": ["PENDING", "AUTHORIZED"] },
+        "prohibited_automatic_actions": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "submission",
+              "registration",
+              "bid",
+              "contract",
+              "financial_commitment",
+              "external_communication"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "approved_action": { "type": ["string", "null"] },
+        "authorization_id": { "type": ["string", "null"] },
+        "authorized_by": { "type": ["string", "null"] },
+        "authorized_at": { "type": ["string", "null"], "format": "date-time" },
+        "expires_at": { "type": ["string", "null"], "format": "date-time" },
+        "review_snapshot_hash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "artifact_hash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "stateTransition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "at", "actor", "reason"],
+      "properties": {
+        "from": { "type": ["string", "null"] },
+        "to": { "type": "string" },
+        "at": { "type": "string", "format": "date-time" },
+        "actor": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "lifecycleEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "at", "source_batch_id", "note"],
+      "properties": {
+        "status": { "type": "string" },
+        "at": { "type": "string", "format": "date-time" },
+        "source_batch_id": { "type": "string" },
+        "note": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

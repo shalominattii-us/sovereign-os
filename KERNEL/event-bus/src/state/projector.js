@@ -28,6 +28,10 @@ export function apply(event) {
       applyXR(event);
       break;
 
+    case "cybercore":
+      applyCybercore(event);
+      break;
+
     default:
       // Unknown domain — record it but don't mutate known state slices
       break;
@@ -196,4 +200,84 @@ function applyXR(event) {
     lastEvent: event.payload,
     updated:   event.timestamp,
   };
+}
+
+// ── Cybercore opportunity intake ─────────────────────────────────────────────
+function queueOpportunity(record) {
+  for (const priority of Object.keys(state.cybercore.queues)) {
+    state.cybercore.queues[priority] = state.cybercore.queues[priority]
+      .filter((recordId) => recordId !== record.id);
+  }
+  if (record.priority && state.cybercore.queues[record.priority]) {
+    state.cybercore.queues[record.priority].push(record.id);
+  }
+}
+
+function applyCybercore(event) {
+  const id = event.entity_id;
+  const current = state.cybercore.opportunities[id] || null;
+
+  switch (event.type) {
+    case "OPPORTUNITY_DISCOVERED":
+    case "OPPORTUNITY_MERGED": {
+      const record = event.payload.record;
+      state.cybercore.opportunities[id] = {
+        ...record,
+        last_event_id: event.event_id,
+        projected_at: event.timestamp,
+      };
+      queueOpportunity(record);
+      break;
+    }
+
+    case "OPPORTUNITY_VALIDATED":
+    case "OPPORTUNITY_STATE_TRANSITIONED":
+    case "OPPORTUNITY_REVIEW_QUEUED":
+      if (current) {
+        state.cybercore.opportunities[id] = {
+          ...current,
+          ...(event.payload.record || {}),
+          action_state: event.payload.action_state || current.action_state,
+          last_event_id: event.event_id,
+          projected_at: event.timestamp,
+        };
+        queueOpportunity(state.cybercore.opportunities[id]);
+      }
+      break;
+
+    case "OPPORTUNITY_AUTHORIZATION_RECORDED":
+      state.cybercore.authorizations[event.payload.authorization.authorization_id] = event.payload.authorization;
+      if (current) {
+        state.cybercore.opportunities[id] = {
+          ...current,
+          action_state: "AUTHORIZED_ACTION",
+          authorization: {
+            ...current.authorization,
+            status: "AUTHORIZED",
+            authorization_id: event.payload.authorization.authorization_id,
+            approved_action: event.payload.authorization.action,
+            authorized_by: event.payload.authorization.authorized_by,
+            authorized_at: event.payload.authorization.authorized_at,
+            expires_at: event.payload.authorization.expires_at,
+          },
+          last_event_id: event.event_id,
+          projected_at: event.timestamp,
+        };
+      }
+      break;
+
+    case "OPPORTUNITY_ARCHIVED":
+      if (current) {
+        state.cybercore.opportunities[id] = {
+          ...current,
+          record_status: event.payload.record_status || "archived",
+          last_event_id: event.event_id,
+          projected_at: event.timestamp,
+        };
+      }
+      break;
+
+    default:
+      break;
+  }
 }

@@ -1,0 +1,25 @@
+# Generated normalized and workflow artifacts
+normalized/*.json
+validated/*.json
+strategic_queue/*.json
+commercial_pipeline/*.json
+archive/*.json
+events/*.jsonl
+authorizations/*.json
+runs/*.json
+runs/*.lock
+runs/.*.lock
+
+# Atomic-write and local editor artifacts
+**/*.tmp
+*.swp
+
+# Preserve stage directories
+!normalized/.gitkeep
+!validated/.gitkeep
+!strategic_queue/.gitkeep
+!commercial_pipeline/.gitkeep
+!archive/.gitkeep
+!events/.gitkeep
+!authorizations/.gitkeep
+!runs/.gitkeep

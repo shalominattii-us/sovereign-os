@@ -28,7 +28,7 @@ src/
 │   └── eventStore.js     ← Append-only JSONL persistence + replay loader
 │
 ├── state/
-│   ├── worldState.js     ← In-memory state store (robots, treasury, xr)
+│   ├── worldState.js     ← In-memory state store (robots, treasury, xr, cybercore)
 │   ├── projector.js      ← Applies events to world state (single mutation point)
 │   └── selectors.js      ← Read-only queries over world state
 │
@@ -98,7 +98,7 @@ curl http://localhost:8080/health
 
 ## Event Sourcing
 
-Every accepted event is immediately appended to `data/events.jsonl` as a single JSON line:
+Every accepted event is immediately appended to `data/events.jsonl` as a single JSON line. The `cybercore` domain projects opportunity records, P0–P2 queues, and authorization artifacts; its router branch is intentionally side-effect-free.
 
 ```jsonl
 {"event_id":"bfcc9438-...","timestamp":1782855560406,"domain":"robotics","type":"MOVE_COMMAND","entity_id":"robot-arm-01","payload":{...}}

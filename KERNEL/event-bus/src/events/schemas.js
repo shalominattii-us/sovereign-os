@@ -48,6 +48,15 @@ export const EventTypes = {
   // ── XR domain ─────────────────────────────────────────────────────────────
   SCENE_LOAD:     "SCENE_LOAD",
   AVATAR_SPAWN:   "AVATAR_SPAWN",
+
+  // ── Cybercore opportunity-intake domain ────────────────────────────────────
+  OPPORTUNITY_DISCOVERED:              "OPPORTUNITY_DISCOVERED",
+  OPPORTUNITY_MERGED:                  "OPPORTUNITY_MERGED",
+  OPPORTUNITY_VALIDATED:               "OPPORTUNITY_VALIDATED",
+  OPPORTUNITY_STATE_TRANSITIONED:      "OPPORTUNITY_STATE_TRANSITIONED",
+  OPPORTUNITY_REVIEW_QUEUED:           "OPPORTUNITY_REVIEW_QUEUED",
+  OPPORTUNITY_AUTHORIZATION_RECORDED:  "OPPORTUNITY_AUTHORIZATION_RECORDED",
+  OPPORTUNITY_ARCHIVED:                "OPPORTUNITY_ARCHIVED",
 };
 
 /**
@@ -56,6 +65,7 @@ export const EventTypes = {
 export const Domains = {
   ROBOTICS: "robotics",
   TREASURY: "treasury",
-  XR:       "xr",
-  EXCHANGE: "exchange",
+  XR:        "xr",
+  EXCHANGE:  "exchange",
+  CYBERCORE: "cybercore",
 };
