@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegentix.local/schemas/foundry/run-manifest-v1.json",
+  "title": "AEGENTIX Foundry Run Manifest",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "foundry_run_id",
+    "foundry_id",
+    "foundry_version",
+    "status",
+    "started_at",
+    "plugin_results",
+    "safety",
+    "artifact_hash"
+  ],
+  "properties": {
+    "schema_version": { "const": "aegentix.foundry.run-manifest.v1" },
+    "foundry_run_id": { "type": "string", "pattern": "^foundry_run_[a-f0-9]{24}$" },
+    "foundry_id": { "const": "foundry.cybercore.opportunity-intelligence" },
+    "foundry_version": { "type": "string" },
+    "status": { "enum": ["COMPLETED", "FAILED"] },
+    "started_at": { "type": "string", "format": "date-time" },
+    "completed_at": { "type": "string", "format": "date-time" },
+    "failed_at": { "type": "string", "format": "date-time" },
+    "plugin_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["plugin_id", "plugin_version", "stage", "hook", "status", "started_at", "artifact_hash"],
+        "properties": {
+          "plugin_id": { "type": "string" },
+          "plugin_version": { "type": "string" },
+          "stage": { "type": "string" },
+          "hook": { "type": "string" },
+          "status": { "enum": ["COMPLETED", "FAILED"] },
+          "started_at": { "type": "string", "format": "date-time" },
+          "artifact_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["automatic_dispatches", "external_actions_executed", "treasury_labs_handoffs_executed", "authorization_policy"],
+      "properties": {
+        "automatic_dispatches": { "const": 0 },
+        "external_actions_executed": { "const": 0 },
+        "treasury_labs_handoffs_executed": { "const": 0 },
+        "authorization_policy": { "const": "human_required" }
+      }
+    },
+    "artifact_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "COMPLETED" } } },
+      "then": {
+        "required": ["completed_at", "output", "stream_publication"],
+        "properties": {
+          "completed_at": true,
+          "output": true,
+          "stream_publication": true
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "FAILED" } } },
+      "then": {
+        "required": ["failed_at", "error"],
+        "properties": {
+          "failed_at": true,
+          "error": true
+        }
+      }
+    }
+  ]
+}

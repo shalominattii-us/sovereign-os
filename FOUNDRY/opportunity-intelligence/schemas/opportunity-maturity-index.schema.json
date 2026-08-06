@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegentix.local/schemas/foundry/opportunity-maturity-index-v1.json",
+  "title": "AEGENTIX Foundry Opportunity Maturity Output Index",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "output_run_id",
+    "generated_at",
+    "pipeline_run_id",
+    "total_outputs",
+    "by_maturity",
+    "by_disposition",
+    "human_review_required",
+    "automatic_dispatches",
+    "external_actions_executed",
+    "files",
+    "artifact_hash"
+  ],
+  "properties": {
+    "schema_version": { "const": "aegentix.foundry.opportunity-output-index.v1" },
+    "output_run_id": { "type": "string", "pattern": "^foundry_output_run_[a-f0-9]{24}$" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "pipeline_run_id": { "type": ["string", "null"] },
+    "total_outputs": { "type": "integer", "minimum": 0 },
+    "by_maturity": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "by_disposition": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "human_review_required": { "type": "integer", "minimum": 0 },
+    "automatic_dispatches": { "const": 0 },
+    "external_actions_executed": { "const": 0 },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["record_id", "bundle_id", "artifact_hash", "maturity_stage", "relative_path"],
+        "properties": {
+          "record_id": { "type": "string", "pattern": "^opp_[a-f0-9]{24}$" },
+          "bundle_id": { "type": "string", "pattern": "^foundry_output_[a-f0-9]{24}$" },
+          "artifact_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "maturity_stage": { "type": "string" },
+          "relative_path": { "type": "string", "pattern": "^[^/]+\\.maturity\\.json$" }
+        }
+      }
+    },
+    "artifact_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

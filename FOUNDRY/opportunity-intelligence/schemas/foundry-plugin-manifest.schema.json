@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegentix.local/schemas/foundry/plugin-manifest-v1.json",
+  "title": "AEGENTIX Foundry Plugin Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "foundry_id",
+    "name",
+    "version",
+    "division",
+    "description",
+    "runtime",
+    "plugins",
+    "inputs",
+    "schemas",
+    "output_engine",
+    "canonical_documents",
+    "safety"
+  ],
+  "properties": {
+    "schema_version": { "const": "aegentix.foundry.plugin-manifest.v1" },
+    "foundry_id": { "type": "string", "pattern": "^foundry\\.[a-z0-9-]+\\.[a-z0-9-]+$" },
+    "name": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "division": { "const": "CYBERCORE" },
+    "description": { "type": "string", "minLength": 1 },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine", "minimum_version", "entrypoint", "package"],
+      "properties": {
+        "engine": { "const": "node" },
+        "minimum_version": { "type": "string" },
+        "entrypoint": { "type": "string" },
+        "package": { "type": "string" }
+      }
+    },
+    "plugins": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "stage", "hook", "implementation"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^foundry\\.cybercore\\.[a-z0-9-]+$" },
+          "stage": { "type": "string", "minLength": 1 },
+          "hook": { "type": "string", "pattern": "^foundry\\.opportunity\\.[a-z0-9-]+$" },
+          "implementation": { "type": "string", "minLength": 1 }
+        }
+      },
+      "uniqueItems": true
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "schemas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plugin_manifest", "run_manifest", "maturity_output", "maturity_index"],
+      "properties": {
+        "plugin_manifest": { "type": "string", "minLength": 1 },
+        "run_manifest": { "type": "string", "minLength": 1 },
+        "maturity_output": { "type": "string", "minLength": 1 },
+        "maturity_index": { "type": "string", "minLength": 1 }
+      }
+    },
+    "output_engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation", "bundle_schema", "index_schema", "default_output_directory", "stream_topic", "automatic_dispatch", "external_action_execution"],
+      "properties": {
+        "implementation": { "type": "string" },
+        "bundle_schema": { "type": "string" },
+        "index_schema": { "type": "string" },
+        "default_output_directory": { "type": "string" },
+        "stream_topic": { "type": "string" },
+        "automatic_dispatch": { "const": false },
+        "external_action_execution": { "const": false }
+      }
+    },
+    "canonical_documents": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authorization_policy", "ready_state", "treasury_labs_automatic_handoff", "replay_side_effects", "external_actions"],
+      "properties": {
+        "authorization_policy": { "const": "human_required" },
+        "ready_state": { "const": "HUMAN_REVIEW_REQUIRED" },
+        "treasury_labs_automatic_handoff": { "const": false },
+        "replay_side_effects": { "const": false },
+        "external_actions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" },
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}

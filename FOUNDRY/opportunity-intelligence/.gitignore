@@ -1,0 +1,7 @@
+# Generated Foundry maturity bundles and run evidence
+outputs/*
+!outputs/.gitkeep
+
+# Atomic-write and local runtime artifacts
+*.tmp
+*.lock

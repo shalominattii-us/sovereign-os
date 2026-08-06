@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aegentix.local/schemas/foundry/opportunity-maturity-output-v1.json",
+  "title": "AEGENTIX Foundry Opportunity Maturity Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "generated_at",
+    "output_type",
+    "source",
+    "maturity",
+    "decision",
+    "summary",
+    "treasury_labs",
+    "safety",
+    "record_snapshot",
+    "artifact_hash"
+  ],
+  "properties": {
+    "schema_version": { "const": "aegentix.foundry.opportunity-output.v1" },
+    "bundle_id": { "type": "string", "pattern": "^foundry_output_[a-f0-9]{24}$" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "output_type": { "const": "CYBERCORE_OPPORTUNITY_MATURITY" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pipeline", "pipeline_run_id", "record_id", "record_hash"],
+      "properties": {
+        "pipeline": { "const": "CYBERCORE/opportunity_intake" },
+        "pipeline_run_id": { "type": ["string", "null"] },
+        "record_id": { "type": "string", "pattern": "^opp_[a-f0-9]{24}$" },
+        "record_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "maturity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "order", "terminal"],
+      "properties": {
+        "stage": {
+          "enum": [
+            "DISCOVERED",
+            "SOURCE_DISCOVERY",
+            "SOURCE_VERIFIED",
+            "STRATEGIC_INTELLIGENCE",
+            "FORECAST_MONITOR",
+            "PROGRAM_DISCOVERY",
+            "HUMAN_REVIEW",
+            "AUTHORIZED_SCOPE_RECORDED",
+            "CLOSED"
+          ]
+        },
+        "order": { "type": "integer", "minimum": 10, "maximum": 90 },
+        "terminal": { "type": "boolean" }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "human_decision_required", "actionable", "reason"],
+      "properties": {
+        "disposition": { "type": "string", "minLength": 1 },
+        "human_decision_required": { "type": "boolean" },
+        "actionable": { "type": "boolean" },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "title", "action_state", "validation_status", "temporal_status", "commercial_status"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^opp_[a-f0-9]{24}$" },
+        "title": { "type": "string", "minLength": 1 },
+        "action_state": { "type": "string" },
+        "validation_status": { "type": ["string", "null"] },
+        "temporal_status": { "type": "string" },
+        "commercial_status": { "type": "string" },
+        "candidate_paths": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+      }
+    },
+    "treasury_labs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "automatic_dispatch", "handoff_executed"],
+      "properties": {
+        "status": { "type": "string" },
+        "automatic_dispatch": { "const": false },
+        "handoff_executed": { "const": false }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["external_action_executed", "output_is_decision_support_only", "authorization_required_for_external_action"],
+      "properties": {
+        "external_action_executed": { "const": false },
+        "output_is_decision_support_only": { "const": true },
+        "authorization_required_for_external_action": { "const": true }
+      }
+    },
+    "record_snapshot": { "type": "object" },
+    "artifact_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

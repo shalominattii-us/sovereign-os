@@ -3,8 +3,6 @@
  * Central registry for all division plugins and third-party extensions.
  */
 
-const crypto = require('crypto');
-
 class PluginRegistry {
   constructor() {
     this.plugins = new Map();
@@ -12,8 +10,23 @@ class PluginRegistry {
   }
 
   register(plugin) {
-    const { division, name, version, description, hooks = [] } = plugin;
+    const {
+      division,
+      name,
+      version,
+      description,
+      hooks = [],
+      manifest = null,
+      entrypoint = null,
+      capabilities = []
+    } = plugin;
+    if (!division || !name || !version || !description) {
+      throw new TypeError('Plugin registration requires division, name, version, and description');
+    }
     const pluginId = `${division.toLowerCase()}.${name.toLowerCase()}`;
+    if (this.plugins.has(pluginId)) {
+      throw new Error(`Plugin already registered: ${pluginId}`);
+    }
 
     this.plugins.set(pluginId, {
       pluginId,
@@ -21,7 +34,10 @@ class PluginRegistry {
       name,
       version,
       description,
-      hooks,
+      hooks: [...hooks],
+      manifest,
+      entrypoint,
+      capabilities: [...capabilities],
       registered_at: Date.now(),
       status: 'active'
     });
@@ -67,6 +83,28 @@ const coreDivisions = [
   { division: 'SECURITY', name: 'zero-trust', version: '1.0.0', description: 'Zero trust auth middleware', hooks: ['on_request'] },
   { division: 'DATA', name: 'vector-memory', version: '1.0.0', description: 'Semantic vector memory store', hooks: ['on_memory_store'] },
   { division: 'DATA', name: 'knowledge-graph', version: '1.0.0', description: 'Cross-domain knowledge graph', hooks: ['on_entity_created'] },
+  {
+    division: 'FOUNDRY',
+    name: 'cybercore-opportunity-intelligence',
+    version: '1.0.0',
+    description: 'Executable Cybercore opportunity discovery, verification, scoring, routing, and maturity-output composition',
+    hooks: [
+      'foundry.opportunity.discover',
+      'foundry.opportunity.verify-source',
+      'foundry.opportunity.score',
+      'foundry.opportunity.route',
+      'foundry.opportunity.emit-output'
+    ],
+    manifest: 'FOUNDRY/opportunity-intelligence/manifests/cybercore-opportunity-intelligence.plugin.json',
+    entrypoint: 'FOUNDRY/opportunity-intelligence/bin/aegentix_foundry_opportunity.js',
+    capabilities: [
+      'opportunity-intake',
+      'source-verification',
+      'strategic-intelligence',
+      'commercialization-routing',
+      'maturity-output'
+    ]
+  },
 ];
 
 for (const plugin of coreDivisions) registry.register(plugin);

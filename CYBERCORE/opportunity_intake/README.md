@@ -91,6 +91,16 @@ aegentix_cybercore_ingest route \
 
 Each operation writes a hashed run manifest. A source-evidence refresh resets downstream scores, routes, and any stale authorization so the updated record must pass the pipeline again.
 
+## Foundry composition and maturity outputs
+
+The repository-wide Foundry wrapper executes intake, verification, scoring, routing, and maturity-output generation as one manifest-validated plugin chain:
+
+```bash
+node FOUNDRY/opportunity-intelligence/bin/aegentix_foundry_opportunity.js run
+```
+
+Foundry preserves Cybercore as the domain owner. It emits one hashed maturity bundle per final record, an aggregate index, and a hashed Foundry run manifest. It does not execute an external action or automatic Treasury Labs handoff. The plugin, output, schema, registry, and optional internal-stream contract is documented in the Foundry integration guide.[4]
+
 ## Acceptance snapshot for the bundled batch
 
 The bundled evidence batch records the authoritative pages and retrieval timestamp for all 22 intake titles.[2] The acceptance run on 2026-08-06 produced these deterministic results:
@@ -211,3 +221,4 @@ The complete reproducible acceptance evidence is recorded in [`VERIFICATION.md`]
 [1]: docs/INTELLIGENCE_PIPELINE_SPEC_v2.md "Cybercore Intelligence Pipeline Specification v2"
 [2]: evidence/source-verification-2026-08-06.json "Authoritative source-evidence batch"
 [3]: VERIFICATION.md "Cybercore verification evidence"
+[4]: ../../FOUNDRY/opportunity-intelligence/docs/FOUNDRY_INTEGRATION.md "Foundry integration contract"

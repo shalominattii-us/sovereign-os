@@ -5,6 +5,9 @@
  * Interact with the Kernel, Treasury, AI, XR, and all divisions.
  */
 
+const path = require('path');
+const { spawn } = require('child_process');
+
 const KERNEL_URL = process.env.KERNEL_EVENT_BUS_URL || 'http://localhost:8080';
 
 async function request(method, path, body = null) {
@@ -54,9 +57,23 @@ const commands = {
     console.log(JSON.stringify(data, null, 2));
   },
 
+  async foundry(...args) {
+    const entrypoint = path.resolve(__dirname, '../../FOUNDRY/opportunity-intelligence/bin/aegentix_foundry_opportunity.js');
+    const child = spawn(process.execPath, [entrypoint, ...(args.length ? args : ['run'])], {
+      stdio: 'inherit',
+      env: process.env
+    });
+    await new Promise((resolve, reject) => {
+      child.once('error', reject);
+      child.once('exit', code => code === 0
+        ? resolve()
+        : reject(new Error(`Foundry command failed with exit code ${code}`)));
+    });
+  },
+
   async divisions() {
     const divisions = [
-      'KERNEL', 'TREASURY', 'FINANCE', 'AI', 'XR',
+      'KERNEL', 'FOUNDRY', 'CYBERCORE', 'TREASURY', 'FINANCE', 'AI', 'XR',
       'CLOUD', 'DATA', 'SECURITY', 'DEVELOPER', 'ECOSYSTEM'
     ];
     console.log('\n[AEGENTIX CYBERNETICS] Divisions');
@@ -77,6 +94,8 @@ Commands:
   state                           Get current world state
   emit <domain> <type> <entityId> [payload_json]
                                   Emit an intent to the Kernel
+  foundry [run|manifest|plugins] [options]
+                                  Run or inspect the Cybercore Foundry pipeline
   divisions                       List all AEGENTIS divisions
   help                            Show this help
 
@@ -86,6 +105,8 @@ Environment:
 Examples:
   aegentis health
   aegentis state
+  aegentis foundry run
+  aegentis foundry plugins
   aegentis emit robotics MOVE_COMMAND robot-arm-01 '{"action":"move","position":[10,20,30],"approved":true,"force":1}'
   aegentis emit treasury DEPOSIT_RECORDED wallet-001 '{"asset":"USD","amount":1000}'
 `);

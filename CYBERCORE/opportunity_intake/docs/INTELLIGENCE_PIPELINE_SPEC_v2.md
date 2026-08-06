@@ -135,6 +135,21 @@ aegentix_cybercore_ingest pipeline --evidence evidence/source-verification-2026-
 
 Every operation writes a run manifest, appends events, synchronizes durable stage projections, and optionally publishes events to a running Kernel. Kernel publication is fail-open by default and fail-closed when `--kernel-required` is set.
 
+## Foundry composition
+
+The repository-native Foundry composition invokes this pipeline through five executable plugins: discovery, source verification, strategic intelligence, commercialization routing, and maturity output. The canonical Foundry manifest links this specification, all input and output schemas, both policy files, the operator entrypoint, and the human-required safety contract.[1]
+
+```bash
+node FOUNDRY/opportunity-intelligence/bin/aegentix_foundry_opportunity.js run
+```
+
+Foundry emits one immutable opportunity-maturity bundle per final `OpportunityRecord`, plus an aggregate output index and hashed run manifest. These are internal decision-support artifacts. Foundry records zero automatic dispatches, zero external actions, and zero Treasury Labs handoffs. The complete composition contract is documented separately so this file remains the single domain source for Cybercore lifecycle semantics.[2]
+
 ## Authorization binding
 
 The review material hash includes all evidence, verification, intelligence, commercialization, priority, route, and Treasury handoff fields. Any material change after authorization revokes the prior authorization and returns the record to `HUMAN_REVIEW_REQUIRED` before any external action can be considered.
+
+## References
+
+[1]: ../../../FOUNDRY/opportunity-intelligence/manifests/cybercore-opportunity-intelligence.plugin.json "Foundry plugin manifest"
+[2]: ../../../FOUNDRY/opportunity-intelligence/docs/FOUNDRY_INTEGRATION.md "Foundry integration contract"

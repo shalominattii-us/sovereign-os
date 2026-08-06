@@ -1,0 +1,91 @@
+{
+  "schema_version": "aegentix.foundry.plugin-manifest.v1",
+  "foundry_id": "foundry.cybercore.opportunity-intelligence",
+  "name": "Cybercore Opportunity Intelligence Pipeline",
+  "version": "1.0.0",
+  "division": "CYBERCORE",
+  "description": "Foundry composition of deterministic opportunity discovery, authoritative source verification, strategic scoring, commercialization routing, and maturity output generation.",
+  "runtime": {
+    "engine": "node",
+    "minimum_version": "20",
+    "entrypoint": "FOUNDRY/opportunity-intelligence/bin/aegentix_foundry_opportunity.js",
+    "package": "FOUNDRY/opportunity-intelligence/package.json"
+  },
+  "plugins": [
+    {
+      "id": "foundry.cybercore.discovery",
+      "stage": "DISCOVERY",
+      "hook": "foundry.opportunity.discover",
+      "implementation": "FOUNDRY/opportunity-intelligence/src/plugins/discovery.js"
+    },
+    {
+      "id": "foundry.cybercore.source-verification",
+      "stage": "SOURCE_VERIFICATION",
+      "hook": "foundry.opportunity.verify-source",
+      "implementation": "FOUNDRY/opportunity-intelligence/src/plugins/source_verification.js"
+    },
+    {
+      "id": "foundry.cybercore.strategic-intelligence",
+      "stage": "STRATEGIC_INTELLIGENCE",
+      "hook": "foundry.opportunity.score",
+      "implementation": "FOUNDRY/opportunity-intelligence/src/plugins/strategic_intelligence.js"
+    },
+    {
+      "id": "foundry.cybercore.commercialization",
+      "stage": "COMMERCIALIZATION_ROUTING",
+      "hook": "foundry.opportunity.route",
+      "implementation": "FOUNDRY/opportunity-intelligence/src/plugins/commercialization.js"
+    },
+    {
+      "id": "foundry.cybercore.output",
+      "stage": "OUTPUT_ENGINE",
+      "hook": "foundry.opportunity.emit-output",
+      "implementation": "FOUNDRY/opportunity-intelligence/src/plugins/output.js"
+    }
+  ],
+  "inputs": {
+    "intake_schema": "CYBERCORE/opportunity_intake/schema/intake-batch.schema.json",
+    "evidence_schema": "CYBERCORE/opportunity_intake/schema/source-evidence-batch.schema.json",
+    "record_schema": "CYBERCORE/opportunity_intake/schema/opportunity-record.schema.json",
+    "intelligence_policy": "CYBERCORE/opportunity_intake/policy/intelligence-policy-v1.json",
+    "commercialization_policy": "CYBERCORE/opportunity_intake/policy/commercialization-policy-v1.json"
+  },
+  "schemas": {
+    "plugin_manifest": "FOUNDRY/opportunity-intelligence/schemas/foundry-plugin-manifest.schema.json",
+    "run_manifest": "FOUNDRY/opportunity-intelligence/schemas/foundry-run-manifest.schema.json",
+    "maturity_output": "FOUNDRY/opportunity-intelligence/schemas/opportunity-maturity-output.schema.json",
+    "maturity_index": "FOUNDRY/opportunity-intelligence/schemas/opportunity-maturity-index.schema.json"
+  },
+  "output_engine": {
+    "implementation": "FOUNDRY/opportunity-intelligence/src/output_engine.js",
+    "bundle_schema": "FOUNDRY/opportunity-intelligence/schemas/opportunity-maturity-output.schema.json",
+    "index_schema": "FOUNDRY/opportunity-intelligence/schemas/opportunity-maturity-index.schema.json",
+    "default_output_directory": "FOUNDRY/opportunity-intelligence/outputs",
+    "stream_topic": "foundry.opportunity-intelligence.output",
+    "automatic_dispatch": false,
+    "external_action_execution": false
+  },
+  "canonical_documents": [
+    "CYBERCORE/opportunity_intake/docs/INTELLIGENCE_PIPELINE_SPEC_v2.md",
+    "CYBERCORE/opportunity_intake/README.md",
+    "CYBERCORE/opportunity_intake/VERIFICATION.md",
+    "FOUNDRY/opportunity-intelligence/README.md",
+    "FOUNDRY/opportunity-intelligence/VERIFICATION.md",
+    "FOUNDRY/opportunity-intelligence/docs/FOUNDRY_INTEGRATION.md",
+    "FOUNDRY/opportunity-intelligence/docs/OPPORTUNITY_MATURITY_MODEL.md"
+  ],
+  "safety": {
+    "authorization_policy": "human_required",
+    "ready_state": "HUMAN_REVIEW_REQUIRED",
+    "treasury_labs_automatic_handoff": false,
+    "replay_side_effects": false,
+    "external_actions": [
+      "submission",
+      "registration",
+      "bid",
+      "contract",
+      "financial_commitment",
+      "external_communication"
+    ]
+  }
+}
