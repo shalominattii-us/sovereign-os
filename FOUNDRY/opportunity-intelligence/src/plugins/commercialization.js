@@ -15,6 +15,7 @@ export const commercializationPlugin = defineFoundryPlugin({
       kernelUrl: context.kernelUrl ?? null,
       kernelRequired: context.kernelRequired ?? false,
       actor: "system:foundry-commercialization-routing",
+      evaluatedAt: context.evaluatedAt ?? null,
     });
     if (result.manifest.summary.treasury_handoffs_executed !== 0) {
       throw new Error("Foundry safety invariant violated: Treasury Labs handoff executed automatically");

@@ -28,6 +28,7 @@ test("complete Foundry pipeline executes five plugins and emits 22 maturity outp
     evidenceFile: DEFAULT_PATHS.evidenceFile,
     intelligencePolicyFile: DEFAULT_PATHS.intelligencePolicyFile,
     commercializationPolicyFile: DEFAULT_PATHS.commercializationPolicyFile,
+    evaluatedAt: "2026-08-06T17:32:17.000Z",
   });
 
   assert.equal(run.status, "COMPLETED");
@@ -36,6 +37,7 @@ test("complete Foundry pipeline executes five plugins and emits 22 maturity outp
     run.plugin_results.map((result) => result.status),
     ["COMPLETED", "COMPLETED", "COMPLETED", "COMPLETED", "COMPLETED"],
   );
+  assert.equal(run.evaluated_at, "2026-08-06T17:32:17.000Z");
   assert.equal(run.output.total_outputs, 22);
   assert.equal(run.output.human_review_required, 5);
   assert.equal(run.safety.automatic_dispatches, 0);

@@ -25,11 +25,12 @@ sudo systemctl enable --now sovereind
 
 ## Foundry and Cybercore Opportunity Intelligence
 
-The repository includes a manifest-validated Foundry composition under `FOUNDRY/opportunity-intelligence` and the canonical domain engine under `CYBERCORE/opportunity_intake`. Together they provide opportunity intake, authoritative source verification, deterministic strategic scoring, commercialization routing, maturity outputs, append-only events, and a strict human authorization boundary.[1] [2]
+The canonical Foundry runtime now lives in the dedicated [`shalominattii-us/Foundry`](https://github.com/shalominattii-us/Foundry) repository. This repository owns the Cybercore domain engine under `CYBERCORE/opportunity_intake`, Kernel event integration, and a manifest-validated compatibility bridge under `FOUNDRY/opportunity-intelligence`.[1] [2] [3]
 
 | Layer | Responsibility |
 |---|---|
-| Foundry | Plugin composition, executable hooks, maturity bundles, output index, and run evidence |
+| Dedicated Foundry repository | Native Python intelligence plugins, maturity output engine, immutable run artifacts, and execution lifecycle |
+| Sovereign Foundry bridge | Backward-compatible Node composition, Kernel publication, local output index, and AEGENTIS delegation |
 | Cybercore | Canonical records, evidence, scores, routes, lifecycle, events, and authorization |
 | Kernel | Policy validation, persistence, state projection, and replay isolation |
 
@@ -39,9 +40,10 @@ npm test --prefix FOUNDRY/opportunity-intelligence
 node FOUNDRY/opportunity-intelligence/bin/aegentix_foundry_opportunity.js run
 ```
 
-The Foundry output engine executes no external action and no automatic Treasury Labs handoff. Ready records stop at `HUMAN_REVIEW_REQUIRED`.
+Both implementations execute no automatic external action and no automatic Treasury Labs handoff. Ready records stop at a human-review boundary.
 
 ## References
 
-[1]: FOUNDRY/opportunity-intelligence/README.md "Foundry Opportunity Intelligence operator guide"
-[2]: CYBERCORE/opportunity_intake/README.md "Cybercore Opportunity Intelligence operator guide"
+[1]: https://github.com/shalominattii-us/Foundry/tree/12d59571c12cc38dbe723549d119f48db2f269d0 "Canonical Foundry Cybercore Opportunity Intelligence release commit"
+[2]: FOUNDRY/opportunity-intelligence/README.md "Sovereign Foundry compatibility operator guide"
+[3]: CYBERCORE/opportunity_intake/README.md "Cybercore Opportunity Intelligence operator guide"

@@ -1,21 +1,22 @@
-# Foundry Cybercore Opportunity Intelligence Verification Evidence
+# Sovereign Foundry Bridge Verification Evidence
 
 **Module:** `FOUNDRY/opportunity-intelligence`
 
 **Version:** 1.0.0
 
-**Verification date:** 2026-08-06
+**Verification date:** 2026-08-12
 
 **Author:** Manus AI
 
 ## Classification
 
-The Foundry integration reached **RUNTIME_VERIFIED**. The repository now has an executable five-plugin composition, central registry metadata, repository-wide CLI delegation, machine-readable contracts, deterministic maturity outputs, live Kernel publication, and clean replay evidence. No submission, registration, bid, contract, financial commitment, external communication, authorization artifact, or Treasury Labs handoff was created or executed.
+The Sovereign compatibility bridge reached **RUNTIME_VERIFIED** and is pinned to canonical Foundry release commit `12d59571c12cc38dbe723549d119f48db2f269d0`. The bridge retains its five-plugin Node composition, registry metadata, CLI delegation, machine-readable contracts, deterministic maturity outputs, Kernel publication, and replay evidence while the dedicated Foundry repository owns the native Python runtime. No submission, registration, bid, contract, financial commitment, external communication, authorization artifact, or Treasury Labs handoff was created or executed.
 
 | Verification stage | Result | Evidence |
 |---|---|---|
 | `SOURCE_PRESENT` | Pass | Foundry runtime, five plugins, output engine, stream adapter, manifests, schemas, documentation, and tests are tracked. |
-| `MANIFEST_BOUND` | Pass | Runtime plugin IDs and order match the canonical manifest; every referenced file resolves. |
+| `MANIFEST_BOUND` | Pass | Runtime plugin IDs and order match the compatibility manifest; every referenced file resolves. |
+| `CANONICAL_RUNTIME_BOUND` | Pass | Compatibility schema and manifest pin the merged Foundry release branch and commit `12d59571c12cc38dbe723549d119f48db2f269d0`. |
 | `REGISTRY_BOUND` | Pass | Central registry exposes Foundry manifest, entrypoint, hooks, and capabilities. |
 | `CLI_BOUND` | Pass | Repository-wide `aegentis foundry` delegates to the Foundry entrypoint. |
 | `TEST_VERIFIED` | Pass | Foundry, Cybercore, and Kernel suites pass. |
@@ -27,18 +28,19 @@ The Foundry integration reached **RUNTIME_VERIFIED**. The repository now has an 
 
 ## Architecture result
 
-No Foundry path or implementation existed in the reachable branch or repository history before this integration. The resulting ownership model keeps Cybercore as the domain engine and Foundry as the executable composition and output layer.[1] [2]
+The dedicated `shalominattii-us/Foundry` repository is the canonical Python runtime and immutable output engine. This `sovereign-os/FOUNDRY` package is retained as a compatibility and Kernel bridge. Cybercore remains the Sovereign domain engine, and the pinned two-repository contract prevents the bridge from being mistaken for the canonical product runtime.[1] [2]
 
 | Integration surface | Implemented result |
 |---|---|
-| Top-level subsystem | `FOUNDRY/` with public API and architecture guide |
+| Compatibility subsystem | `FOUNDRY/` with public API, bridge runtime, and architecture guide |
 | Composition | `FOUNDRY/opportunity-intelligence` |
 | Plugin manifest | Five ordered executable plugins plus policy, schema, document, and safety links |
 | Registry | `foundry.cybercore-opportunity-intelligence` metadata and hooks |
 | Developer CLI | `aegentis foundry run|manifest|plugins` |
 | Output engine | Per-record maturity bundle, aggregate index, and hashed Foundry run manifest |
 | Optional adapter | Aggregate-only internal event-stream publication |
-| Canonical domain document | Remains under Cybercore and links back to Foundry |
+| Canonical runtime binding | Dedicated Foundry release commit pinned in the compatibility manifest and schema |
+| Canonical domain document | Remains under Cybercore and links to the dedicated Foundry runtime |
 
 ## Automated tests
 
@@ -49,6 +51,8 @@ No Foundry path or implementation existed in the reachable branch or repository 
 | Kernel | **15 passed, 0 failed** | Cybercore policy, projection, event metadata, event store, replay, idempotence, and router isolation regressions |
 | Strict JSON Schema | **25 valid, 0 invalid** | 1 plugin manifest, 1 run manifest, 1 output index, and 22 maturity bundles |
 | Central CLI delegation | Pass | Five executable Foundry plugin descriptors returned through `aegentis foundry plugins` |
+
+The real-data Foundry regression pins `--evaluated-at 2026-08-06T17:32:17Z`, ensuring source verification, scoring, routing, and maturity decisions use one auditable temporal reference instead of drifting with the wall clock.
 
 The repeatable test commands are:
 

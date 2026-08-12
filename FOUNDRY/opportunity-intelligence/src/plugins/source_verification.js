@@ -14,6 +14,7 @@ export const sourceVerificationPlugin = defineFoundryPlugin({
       kernelUrl: context.kernelUrl ?? null,
       kernelRequired: context.kernelRequired ?? false,
       actor: "system:foundry-source-verification",
+      evaluatedAt: context.evaluatedAt ?? null,
     });
     return {
       run_id: result.manifest.run_id,
