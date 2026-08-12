@@ -86,8 +86,10 @@ export async function runFoundryOpportunityPipeline({
   kernelRequired = false,
   streamUrl = null,
   streamRequired = false,
+  evaluatedAt = null,
 } = {}) {
   const manifest = await loadFoundryManifest(manifestFile);
+  const evaluationTimestamp = isoTimestamp(evaluatedAt ?? undefined);
   const startedAt = isoTimestamp();
   const pipelineRunId = `foundry_run_${artifactHash({
     foundry_id: manifest.foundry_id,
@@ -107,6 +109,7 @@ export async function runFoundryOpportunityPipeline({
     kernelUrl,
     kernelRequired,
     generatedAt: startedAt,
+    evaluatedAt: evaluationTimestamp,
     pipelineRunId,
   };
 
@@ -126,6 +129,7 @@ export async function runFoundryOpportunityPipeline({
       foundry_id: manifest.foundry_id,
       foundry_version: manifest.version,
       status: "COMPLETED",
+      evaluated_at: evaluationTimestamp,
       started_at: startedAt,
       completed_at: isoTimestamp(),
       plugin_results: pluginResults,
@@ -155,6 +159,7 @@ export async function runFoundryOpportunityPipeline({
       foundry_id: manifest.foundry_id,
       foundry_version: manifest.version,
       status: "FAILED",
+      evaluated_at: evaluationTimestamp,
       started_at: startedAt,
       failed_at: isoTimestamp(),
       plugin_results: pluginResults,

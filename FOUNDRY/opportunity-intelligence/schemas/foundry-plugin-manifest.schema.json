@@ -11,6 +11,7 @@
     "version",
     "division",
     "description",
+    "canonical_runtime",
     "runtime",
     "plugins",
     "inputs",
@@ -26,6 +27,19 @@
     "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
     "division": { "const": "CYBERCORE" },
     "description": { "type": "string", "minLength": 1 },
+    "canonical_runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "branch", "commit", "manifest", "command", "local_role"],
+      "properties": {
+        "repository": { "const": "https://github.com/shalominattii-us/Foundry" },
+        "branch": { "const": "release/universal-execution-engine-rc1" },
+        "commit": { "const": "12d59571c12cc38dbe723549d119f48db2f269d0" },
+        "manifest": { "const": "manifests/cybercore-opportunity-intelligence.json" },
+        "command": { "const": "foundry-cybercore" },
+        "local_role": { "const": "sovereign_os_compatibility_bridge" }
+      }
+    },
     "runtime": {
       "type": "object",
       "additionalProperties": false,

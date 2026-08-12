@@ -4,7 +4,15 @@
   "name": "Cybercore Opportunity Intelligence Pipeline",
   "version": "1.0.0",
   "division": "CYBERCORE",
-  "description": "Foundry composition of deterministic opportunity discovery, authoritative source verification, strategic scoring, commercialization routing, and maturity output generation.",
+  "description": "Sovereign OS compatibility bridge for the canonical Foundry Cybercore opportunity intelligence runtime, Kernel events, and local maturity projections.",
+  "canonical_runtime": {
+    "repository": "https://github.com/shalominattii-us/Foundry",
+    "branch": "release/universal-execution-engine-rc1",
+    "commit": "12d59571c12cc38dbe723549d119f48db2f269d0",
+    "manifest": "manifests/cybercore-opportunity-intelligence.json",
+    "command": "foundry-cybercore",
+    "local_role": "sovereign_os_compatibility_bridge"
+  },
   "runtime": {
     "engine": "node",
     "minimum_version": "20",

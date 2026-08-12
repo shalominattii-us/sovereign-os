@@ -1,4 +1,4 @@
-# Foundry: Cybercore Opportunity Intelligence
+# Sovereign Foundry Bridge: Cybercore Opportunity Intelligence
 
 **Version:** 1.0.0
 
@@ -6,7 +6,7 @@
 
 **Author:** Manus AI
 
-This package is the executable Foundry composition for the canonical Cybercore Opportunity Intelligence Pipeline. It does not copy or replace Cybercore logic. Instead, five versioned plugins invoke the production intake, evidence, scoring, and routing operations in order, then convert final `OpportunityRecord` snapshots into deterministic **opportunity-maturity outputs**.[1]
+This package is the executable **Sovereign OS compatibility bridge** for the canonical Cybercore Opportunity Intelligence Pipeline. The dedicated [`shalominattii-us/Foundry`](https://github.com/shalominattii-us/Foundry) repository owns the native Python intelligence plugins, maturity output engine, schemas, immutable run artifacts, and `foundry-cybercore` command.[1] This bridge retains the Sovereign-specific Node composition, Kernel event publication, replay projection, developer registry, and optional internal stream integration without copying or replacing Cybercore domain logic.[2]
 
 > A Foundry output is decision support, not permission to act. No plugin submits, registers, bids, contracts, commits funds, communicates externally, or hands a record to Treasury Labs automatically.
 
@@ -24,7 +24,7 @@ This package is the executable Foundry composition for the canonical Cybercore O
 | `docs/OPPORTUNITY_MATURITY_MODEL.md` | Maturity stages, precedence, dispositions, and safety meaning |
 | `tests/` | Unit, registry, stream, and full-pipeline integration coverage |
 
-The central developer registry exposes this composition as `foundry.cybercore-opportunity-intelligence` and lists all five hook names.[2]
+The central developer registry exposes this compatibility composition as `foundry.cybercore-opportunity-intelligence` and lists all five hook names.[3]
 
 ## Plugin chain
 
@@ -38,9 +38,23 @@ The central developer registry exposes this composition as `foundry.cybercore-op
 
 Each plugin result is hashed and embedded in the Foundry run manifest. A plugin failure stops the remaining chain and writes failure evidence without claiming completion.
 
-## Quick start
+## Canonical Foundry runtime
 
-The package requires Node.js 20 or newer and has no third-party runtime dependencies.
+Run the native four-plugin pipeline in the dedicated Foundry repository:
+
+```bash
+foundry-cybercore \
+  --batch examples/cybercore/2026-08-06/AEGENTIX-CYBERCORE-OPP-INTAKE-2026-08-06.json \
+  --evidence examples/cybercore/2026-08-06/source-verification-2026-08-06.json \
+  --output-root var/opportunities/cybercore-runs \
+  --evaluated-at 2026-08-06T17:32:17Z
+```
+
+The Sovereign manifest’s `canonical_runtime` object identifies the actual repository, merged release branch, pinned commit, manifest, command, and local bridge role.
+
+## Compatibility bridge quick start
+
+The bridge requires Node.js 20 or newer and has no third-party runtime dependencies.
 
 ```bash
 npm test --prefix FOUNDRY/opportunity-intelligence
@@ -64,7 +78,8 @@ node FOUNDRY/opportunity-intelligence/bin/aegentix_foundry_opportunity.js run \
   --evidence CYBERCORE/opportunity_intake/evidence/source-verification-2026-08-06.json \
   --intelligence-policy CYBERCORE/opportunity_intake/policy/intelligence-policy-v1.json \
   --commercialization-policy CYBERCORE/opportunity_intake/policy/commercialization-policy-v1.json \
-  --output-dir FOUNDRY/opportunity-intelligence/outputs
+  --output-dir FOUNDRY/opportunity-intelligence/outputs \
+  --evaluated-at 2026-08-06T17:32:17Z
 ```
 
 To require Kernel publication for all Cybercore events:
@@ -83,11 +98,13 @@ node FOUNDRY/opportunity-intelligence/bin/aegentix_foundry_opportunity.js run \
   --stream-required
 ```
 
+`--evaluated-at` sets one ISO 8601 temporal reference for verification, scoring, routing, and maturity decisions. Omit it for a live wall-clock evaluation.
+
 The stream adapter sends only aggregate counts and hashes to `foundry.opportunity-intelligence.output`; it does not publish full record snapshots or execute business actions. HTTPS is required except for localhost.
 
 ## Maturity model
 
-The complete stage precedence and reassessment semantics are defined in the dedicated Opportunity Maturity Model.[4]
+The complete stage precedence and reassessment semantics are defined in the dedicated Opportunity Maturity Model.[5]
 
 | Stage | Meaning | Actionability |
 |---|---|---|
@@ -114,7 +131,7 @@ Each `<record_id>.maturity.json` file contains the canonical record hash, maturi
 | Ready record | Stops at `HUMAN_REVIEW` |
 | Output role | `output_is_decision_support_only: true` |
 
-The schemas are published under `schemas/`, and the manifest links all canonical input, output, run, policy, and documentation contracts.[3]
+The schemas are published under `schemas/`, and the manifest links all canonical input, output, run, policy, documentation, and external Foundry runtime contracts.[4]
 
 ## Verification
 
@@ -124,16 +141,17 @@ npm test --prefix CYBERCORE/opportunity_intake
 npm test --prefix KERNEL/event-bus
 ```
 
-The complete test, schema, live-Kernel, output, replay, registry, CLI, and safety evidence is recorded in [`VERIFICATION.md`](VERIFICATION.md).[5]
+The complete bridge test, schema, live-Kernel, output, replay, registry, CLI, and safety evidence is recorded in [`VERIFICATION.md`](VERIFICATION.md).[6]
 
 ## Documents and ownership
 
-The canonical pipeline specification remains with the domain owner at `CYBERCORE/opportunity_intake/docs/INTELLIGENCE_PIPELINE_SPEC_v2.md`. Foundry references that document from its manifest and adds only the composition, plugin, output, and operator contract. This preserves one authoritative source rather than introducing a divergent copy.
+The canonical domain specification remains with Cybercore at `CYBERCORE/opportunity_intake/docs/INTELLIGENCE_PIPELINE_SPEC_v2.md`. The dedicated Foundry repository owns the native execution composition and output engine. This local package owns only the Sovereign compatibility and Kernel bridge. The split prevents either repository from becoming an undocumented duplicate of the other.
 
 ## References
 
-[1]: ../../CYBERCORE/opportunity_intake/docs/INTELLIGENCE_PIPELINE_SPEC_v2.md "Cybercore Opportunity Intelligence Pipeline specification"
-[2]: ../../DEVELOPER/plugin-registry/registry.js "AEGENTIS plugin registry"
-[3]: manifests/cybercore-opportunity-intelligence.plugin.json "Foundry plugin manifest"
-[4]: docs/OPPORTUNITY_MATURITY_MODEL.md "Cybercore Opportunity Maturity Model"
-[5]: VERIFICATION.md "Foundry integration verification evidence"
+[1]: https://github.com/shalominattii-us/Foundry/tree/12d59571c12cc38dbe723549d119f48db2f269d0 "Canonical Foundry Cybercore Opportunity Intelligence release commit"
+[2]: ../../CYBERCORE/opportunity_intake/docs/INTELLIGENCE_PIPELINE_SPEC_v2.md "Cybercore Opportunity Intelligence Pipeline specification"
+[3]: ../../DEVELOPER/plugin-registry/registry.js "AEGENTIS plugin registry"
+[4]: manifests/cybercore-opportunity-intelligence.plugin.json "Sovereign Foundry bridge manifest"
+[5]: docs/OPPORTUNITY_MATURITY_MODEL.md "Cybercore Opportunity Maturity Model"
+[6]: VERIFICATION.md "Sovereign Foundry bridge verification evidence"

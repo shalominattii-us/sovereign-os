@@ -300,9 +300,11 @@ export async function verifyOpportunitySources({
   kernelUrl = null,
   kernelRequired = false,
   actor = "system:source-verification",
+  evaluatedAt = null,
 }) {
   await ensureDirectoryLayout(baseDir);
   const releaseLock = await acquireExclusiveLock(baseDir, "source-verification");
+  const evaluationTimestamp = isoTimestamp(evaluatedAt ?? undefined);
   const startedAt = isoTimestamp();
   const runId = createRunId("verify", startedAt);
   const publishResults = [];
@@ -335,8 +337,7 @@ export async function verifyOpportunitySources({
       unknown: 0,
     };
     for (const { item, record } of resolved) {
-      const timestamp = isoTimestamp();
-      const updated = applySourceEvidence(record, item, { timestamp, actor });
+      const updated = applySourceEvidence(record, item, { timestamp: evaluationTimestamp, actor });
       validateNormalizedRecord(updated);
       await persistRecordToStages(baseDir, updated);
       updatedRecords.push(updated);
@@ -370,6 +371,7 @@ export async function verifyOpportunitySources({
       evidence_batch_id: payload.batch_id,
       evidence_file: path.relative(baseDir, evidenceFile),
       evidence_hash: artifactHash(payload),
+      evaluated_at: evaluationTimestamp,
       started_at: startedAt,
       completed_at: isoTimestamp(),
       summary,
@@ -416,9 +418,11 @@ export async function scoreOpportunities({
   kernelUrl = null,
   kernelRequired = false,
   actor = "system:strategic-intelligence",
+  evaluatedAt = null,
 }) {
   await ensureDirectoryLayout(baseDir);
   const releaseLock = await acquireExclusiveLock(baseDir, "strategic-intelligence");
+  const evaluationTimestamp = isoTimestamp(evaluatedAt ?? undefined);
   const startedAt = isoTimestamp();
   const runId = createRunId("score", startedAt);
   const publishResults = [];
@@ -441,7 +445,7 @@ export async function scoreOpportunities({
         summary.skipped_unverified += 1;
         continue;
       }
-      const updated = scoreOpportunity(record, policy, { timestamp: isoTimestamp(), actor });
+      const updated = scoreOpportunity(record, policy, { timestamp: evaluationTimestamp, actor });
       validateNormalizedRecord(updated);
       await persistRecordToStages(baseDir, updated);
       updatedRecords.push(updated);
@@ -471,6 +475,7 @@ export async function scoreOpportunities({
       policy_file: path.relative(baseDir, policyFile),
       policy_hash: artifactHash(policy),
       record_selector: recordSelector,
+      evaluated_at: evaluationTimestamp,
       started_at: startedAt,
       completed_at: isoTimestamp(),
       summary,
@@ -512,9 +517,11 @@ export async function routeOpportunities({
   kernelUrl = null,
   kernelRequired = false,
   actor = "system:commercialization-routing",
+  evaluatedAt = null,
 }) {
   await ensureDirectoryLayout(baseDir);
   const releaseLock = await acquireExclusiveLock(baseDir, "commercialization-routing");
+  const evaluationTimestamp = isoTimestamp(evaluatedAt ?? undefined);
   const startedAt = isoTimestamp();
   const runId = createRunId("route", startedAt);
   const publishResults = [];
@@ -542,7 +549,7 @@ export async function routeOpportunities({
       by_status: {},
     };
     for (const record of selected) {
-      const updated = routeOpportunity(record, policy, { timestamp: isoTimestamp(), actor });
+      const updated = routeOpportunity(record, policy, { timestamp: evaluationTimestamp, actor });
       validateNormalizedRecord(updated);
       await persistRecordToStages(baseDir, updated);
       updatedRecords.push(updated);
@@ -577,6 +584,7 @@ export async function routeOpportunities({
       policy_file: path.relative(baseDir, policyFile),
       policy_hash: artifactHash(policy),
       record_selector: recordSelector,
+      evaluated_at: evaluationTimestamp,
       started_at: startedAt,
       completed_at: isoTimestamp(),
       summary,

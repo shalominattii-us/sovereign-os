@@ -15,6 +15,7 @@ export const strategicIntelligencePlugin = defineFoundryPlugin({
       kernelUrl: context.kernelUrl ?? null,
       kernelRequired: context.kernelRequired ?? false,
       actor: "system:foundry-strategic-intelligence",
+      evaluatedAt: context.evaluatedAt ?? null,
     });
     return {
       run_id: result.manifest.run_id,

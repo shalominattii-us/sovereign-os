@@ -1,121 +1,105 @@
-# Cybercore Opportunity Intelligence: Foundry Integration Contract
+# Cybercore Opportunity Intelligence: Two-Repository Foundry Contract
 
-**Version:** 1.0.0
-
+**Version:** 2.0.0
 **Status:** Active
-
 **Author:** Manus AI
 
 ## Placement decision
 
-The canonical **Cybercore Opportunity Intelligence Pipeline** specification remains in its domain-owned location at [`CYBERCORE/opportunity_intake/docs/INTELLIGENCE_PIPELINE_SPEC_v2.md`](../../../CYBERCORE/opportunity_intake/docs/INTELLIGENCE_PIPELINE_SPEC_v2.md).[1] Foundry does not duplicate that document. The Foundry manifest links it and adds the executable composition, plugin hooks, output contracts, and operator entrypoint.[2]
+The canonical **Cybercore Opportunity Intelligence domain specification** remains under [`CYBERCORE/opportunity_intake`](../../../CYBERCORE/opportunity_intake/docs/INTELLIGENCE_PIPELINE_SPEC_v2.md). The canonical **Foundry plugin runtime, maturity output engine, schemas, and operator command** live in the dedicated [`shalominattii-us/Foundry`](https://github.com/shalominattii-us/Foundry) repository.[1] [2]
 
-This split establishes clear ownership:
+The local `sovereign-os/FOUNDRY` package is retained as a compatibility bridge because it integrates directly with the Sovereign Kernel event bus, replay projection, developer registry, and optional internal event stream. It is not the canonical Foundry product runtime.
 
 | Concern | Owner | Canonical location |
 |---|---|---|
-| Opportunity identity, lifecycle, evidence, scoring, routing, authorization | Cybercore | `CYBERCORE/opportunity_intake` |
-| Plugin composition, ordered execution, maturity outputs | Foundry | `FOUNDRY/opportunity-intelligence` |
-| Plugin discovery metadata | Developer registry | `DEVELOPER/plugin-registry/registry.js` |
-| Event validation, persistence, projection, replay | Kernel | `KERNEL/event-bus` |
-| Optional aggregate metadata propagation | Cloud stream | `CLOUD/event-streaming` |
+| Opportunity identity, lifecycle, evidence, policies, and authorization | Cybercore | `sovereign-os/CYBERCORE/opportunity_intake` |
+| Pure intelligence plugins and maturity output engine | Foundry | `Foundry/agent/opportunities/intelligence` and `Foundry/agent/opportunities/integration.py` |
+| Native Foundry CLI and immutable run artifacts | Foundry | `foundry-cybercore` and `Foundry/var/opportunities` |
+| Sovereign Kernel event publication and replay | Sovereign OS | `sovereign-os/KERNEL/event-bus` |
+| Sovereign compatibility composition | Sovereign OS | `sovereign-os/FOUNDRY/opportunity-intelligence` |
+| Sovereign plugin discovery metadata | Sovereign OS | `sovereign-os/DEVELOPER/plugin-registry` |
+| Optional aggregate stream propagation | Sovereign OS | `sovereign-os/CLOUD/event-streaming` |
 
 ## Runtime architecture
 
 ```mermaid
-flowchart TD
-    CLI[AEGENTIS CLI or Foundry CLI] --> FM[Foundry Manifest Validation]
-    FM --> D[Discovery Plugin]
-    D --> V[Source Verification Plugin]
-    V --> S[Strategic Intelligence Plugin]
-    S --> C[Commercialization Plugin]
-    C --> O[Output Plugin]
+flowchart LR
+    CB[Cybercore Batch + Evidence] --> FA[Foundry Cybercore Adapter]
+    FA --> FP[Foundry Four-Plugin Chain]
+    FP --> FO[Foundry Immutable Maturity Outputs]
+    FO --> HR[Human Review]
+    HR -. explicit decision .-> FE[Foundry Execution Runtime]
 
-    D --> CE[Cybercore Engine]
-    V --> CE
-    S --> CE
-    C --> CE
-    CE --> EL[Append-only Cybercore Events]
-    CE -. optional .-> K[Kernel Intent API]
-    K --> P[Policy + Event Store + Projector]
-    P --> R[Projection-only Cybercore Router]
-
-    O --> B[Maturity Bundles]
-    O --> I[Aggregate Output Index]
-    I -. explicit optional configuration .-> CS[Internal Cloud Stream]
-    B --> H[Human Review Boundary]
+    CB --> SB[Sovereign Compatibility Bridge]
+    SB --> KE[Cybercore Events]
+    KE --> K[Kernel Policy + Store + Projector]
+    K --> SR[Side-Effect-Free Replay]
 ```
 
-The live Kernel path persists and projects accepted Cybercore events before routing. Cybercore routing remains side-effect-free, and replay never invokes the router.[3]
+The Foundry runtime performs strict source verification, deterministic strategic scoring, commercialization routing, and maturity classification. Only `HUMAN_REVIEW` records may initialize execution contexts. Foundry’s execution engine still requires explicit approval at consequential boundaries.[2] [3]
 
-## Plugin execution contract
+The Sovereign bridge performs the equivalent local composition and can publish Cybercore events to the Kernel. Cybercore routing remains projection-only, and Kernel replay does not invoke side-effect routers.[4]
 
-Foundry executes the manifest order exactly. Each plugin has a stable ID, semantic version, stage, hook, description, and executable function. The wrapper records start and completion timestamps, output metadata, and a SHA-256 artifact hash. Failure stops the chain and attaches a hashed failure result to the Foundry failure manifest.
+## Canonical Foundry plugin chain
 
-| Plugin | Required precondition | Postcondition |
-|---|---|---|
-| Discovery | Structurally valid approved batch | Stable canonical records and discovery events |
-| Source verification | Normalized records and evidence batch | Strict evidence decision and temporal state for every selected record |
-| Strategic intelligence | `validation.status == VERIFIED` | Versioned, explainable five-dimension score |
-| Commercialization | Verified records are scored | Commercial disposition and zero automatic Treasury handoff |
-| Output engine | Canonical final records exist | One maturity bundle per record plus aggregate index |
+| Order | Plugin | Postcondition |
+|---:|---|---|
+| 1 | `cybercore-source-verification` | Strict evidence decision and temporal status |
+| 2 | `cybercore-strategic-intelligence` | Versioned five-dimension score or a blocked null score |
+| 3 | `cybercore-commercialization-routing` | Commercial disposition and zero automatic handoff |
+| 4 | `cybercore-maturity-output` | Integrity-bound maturity artifact and disposition |
 
-The runtime checks that executable plugin IDs and order match the manifest before any pipeline stage runs.
+The native registry rejects duplicate plugin identifiers, duplicate stages, duplicate order values, and incomplete chains. Each stage receives an immutable context and returns information only. It does not receive orchestration services, filesystem authority, credentials, network clients, or event-store access.
 
-## Output engine contract
+## Foundry output engine
 
-The output engine creates one `<record_id>.maturity.json` bundle for each final record. The bundle binds to the full canonical record by hash and carries a maturity stage, disposition, compact summary, safety state, full record snapshot, and its own artifact hash. The aggregate `index.json` records every file path and hash plus maturity and disposition counts.
+The canonical Foundry output engine extends `JsonDirectoryArtifactSink`. Each immutable UTC run directory contains opportunities, evidence packets, mission candidates, mission graphs, intelligence outputs, complete bundles, and a hash-indexed v2 manifest.
 
-Outputs are synchronized on every run: stale maturity bundles and the prior index are removed before the new set is written atomically. Run manifests remain as durable local evidence.
-
-| Output field | Safety meaning |
+| Output invariant | Required value |
 |---|---|
-| `output_is_decision_support_only` | The artifact informs a decision but does not perform it |
-| `authorization_required_for_external_action` | Downstream execution must verify Cybercore authorization |
-| `automatic_dispatches` | Always `0` |
-| `external_actions_executed` | Always `0` |
-| `treasury_labs.automatic_dispatch` | Always `false` |
-| `treasury_labs.handoff_executed` | Always `false` |
+| `automatic_dispatches` | `0` |
+| `external_actions_executed` | `0` |
+| `treasury_labs_handoffs_executed` | `0` |
+| Intelligence plugin trace length | `4` |
+| Authorization policy | `human_required` |
 
-## Optional internal event stream
+The machine-readable contracts are published in `Foundry/schemas/cybercore`. The canonical plugin and ownership manifest is `Foundry/manifests/cybercore-opportunity-intelligence.json`.
 
-The event-stream adapter is disabled by default. When an operator explicitly supplies `--stream-url`, Foundry publishes only aggregate index metadata and hashes to `foundry.opportunity-intelligence.output`. Full opportunity snapshots remain in local output bundles. A non-local endpoint must use HTTPS, and `--stream-required` converts a publication failure into a failed Foundry run.
+## Canonical operator path
 
-The stream publication is an internal metadata operation, not an opportunity submission or Treasury Labs handoff.
+Run in the dedicated Foundry repository:
 
-## Registry integration
+```bash
+foundry-cybercore \
+  --batch examples/cybercore/2026-08-06/AEGENTIX-CYBERCORE-OPP-INTAKE-2026-08-06.json \
+  --evidence examples/cybercore/2026-08-06/source-verification-2026-08-06.json \
+  --output-root var/opportunities/cybercore-runs \
+  --evaluated-at 2026-08-06T17:32:17Z
+```
 
-The central registry advertises one Foundry composition named `foundry.cybercore-opportunity-intelligence`, with the manifest, entrypoint, five hooks, and capabilities. Executable logic remains in Foundry rather than the registry because the registry is the discovery catalog, not the stage runner.[4]
+## Sovereign compatibility paths
 
-## Operator paths
-
-Run directly:
+Run the local bridge directly:
 
 ```bash
 node FOUNDRY/opportunity-intelligence/bin/aegentix_foundry_opportunity.js run
 ```
 
-Run through the repository CLI:
+Run through AEGENTIS:
 
 ```bash
 node DEVELOPER/cli/aegentis.js foundry run
 ```
 
-Inspect the exact composition:
-
-```bash
-node FOUNDRY/opportunity-intelligence/bin/aegentix_foundry_opportunity.js manifest
-node FOUNDRY/opportunity-intelligence/bin/aegentix_foundry_opportunity.js plugins
-```
+The local bridge’s manifest contains a `canonical_runtime` binding with the actual Foundry repository, merged release branch, pinned commit, canonical manifest, native command, and explicit `sovereign_os_compatibility_bridge` role.
 
 ## Verification contract
 
-A release is accepted only when plugin-unit tests, output-engine tests, registry tests, optional-stream tests, the complete 22-record Foundry integration test, Cybercore regressions, Kernel regressions, strict JSON Schema validation, and a clean generated-output inspection all pass. The final observed evidence is recorded in [`VERIFICATION.md`](../VERIFICATION.md).[5]
+The combined release is accepted only when the Foundry-native plugin, batch, output, manifest, schema, package, and complete repository tests pass; the real 22-record interoperability fixture reproduces the verified distribution; sovereign Cybercore and Kernel regressions pass; and both repositories remain clean and synchronized.
 
 ## References
 
 [1]: ../../../CYBERCORE/opportunity_intake/docs/INTELLIGENCE_PIPELINE_SPEC_v2.md "Cybercore Opportunity Intelligence Pipeline specification"
-[2]: ../manifests/cybercore-opportunity-intelligence.plugin.json "Foundry plugin manifest"
-[3]: ../../../KERNEL/event-bus/src/api/intent.js "Kernel live intent lifecycle"
-[4]: ../../../DEVELOPER/plugin-registry/registry.js "AEGENTIS plugin registry"
-[5]: ../VERIFICATION.md "Foundry integration verification evidence"
+[2]: https://github.com/shalominattii-us/Foundry/tree/12d59571c12cc38dbe723549d119f48db2f269d0 "Canonical Foundry Cybercore Opportunity Intelligence release commit"
+[3]: https://github.com/shalominattii-us/Foundry/blob/v1.0.0-rc1/docs/adr/0004-sacred-execution-boundary.md "Foundry Sacred Execution Boundary"
+[4]: ../../../KERNEL/event-bus/src/api/intent.js "Kernel live intent lifecycle"

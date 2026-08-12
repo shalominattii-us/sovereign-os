@@ -53,6 +53,7 @@ Run options:
   --commercialization-policy <path>    Commercialization routing policy
   --output-dir <path>                  Foundry maturity output directory
   --batch <selector>                   Optional batch selector
+  --evaluated-at <ISO timestamp>       Optional temporal evaluation clock
   --kernel-url <url>                   Optional Kernel /intent endpoint
   --kernel-required                    Fail closed if Kernel publication fails
   --stream-url <url>                   Optional internal event-stream service
@@ -74,6 +75,7 @@ async function run(options) {
     commercializationPolicyFile: path.resolve(options.commercializationPolicy ?? DEFAULT_PATHS.commercializationPolicyFile),
     outputDir: path.resolve(options.outputDir ?? DEFAULT_PATHS.outputDir),
     batchSelector: options.batch ?? null,
+    evaluatedAt: options.evaluatedAt ?? null,
     kernelUrl: options.kernelUrl ?? null,
     kernelRequired: options.kernelRequired === true,
     streamUrl: options.streamUrl ?? null,
